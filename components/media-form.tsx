@@ -55,9 +55,40 @@ const formSchema = z.object({
   nse: z.string().optional(),
 })
 
+interface Provider {
+  id: number;
+  name: string;
+}
+
 export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
   const [isSaving, setIsSaving] = useState(false)
+  const [providers, setProviders] = useState<Provider[]>([])
   const { toast } = useToast()
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        // Mocked API call to JSONPlaceholder
+        const response = await fetch('https://jsonplaceholder.typicode.com/users')
+        const data = await response.json()
+        // Take only first 5 users and map them to providers
+        const mockProviders = data.slice(0, 5).map((user: any) => ({
+          id: user.id,
+          name: user.company.name
+        }))
+        setProviders(mockProviders)
+      } catch (error) {
+        console.error('Error fetching providers:', error)
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudieron cargar los proveedores"
+        })
+      }
+    }
+
+    fetchProviders()
+  }, [])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -136,9 +167,11 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="MediaCorp">MediaCorp</SelectItem>
-                          <SelectItem value="PubliMax">PubliMax</SelectItem>
-                          <SelectItem value="AdVision">AdVision</SelectItem>
+                          {providers.map((provider) => (
+                            <SelectItem key={provider.id} value={provider.name}>
+                              {provider.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -431,6 +464,9 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                   )}
                 />
 
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
                 <FormField
                   control={form.control}
                   name="orientacion"
@@ -478,6 +514,7 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                   )}
                 />
 
+                </div>
                 <FormField
                   control={form.control}
                   name="caracteristica"
