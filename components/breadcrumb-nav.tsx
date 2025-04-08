@@ -31,7 +31,7 @@ export function BreadcrumbNav() {
 
         // Map path to readable label
         let label = path.charAt(0).toUpperCase() + path.slice(1)
-        if (path === "media") label = "Gestión de Medios"
+        if (path === "media") label = "Gestión de espacios"
         if (path === "proposal") label = "Propuestas"
         if (path === "settings") label = "Configuración"
 

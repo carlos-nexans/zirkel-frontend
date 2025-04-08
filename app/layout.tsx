@@ -12,9 +12,9 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Sistema de Gestión de Medios",
+  title: "Sistema de Gestión de Zirkel Media",
   description: "Plataforma para gestionar medios publicitarios",
-    generator: 'v0.dev'
+  // generator: 'v0.dev'
 }
 
 export default function RootLayout({

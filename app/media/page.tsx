@@ -205,7 +205,7 @@ export default function MediaPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Gestión de Medios</h1>
+      <h1 className="text-3xl font-bold mb-6">Gestión de espacios</h1>
 
       <Tabs defaultValue="file">
         <TabsList>
@@ -234,7 +234,10 @@ export default function MediaPage() {
                   <p className="text-sm text-muted-foreground mb-4">
                     Agrega medios manualmente sin necesidad de subir un archivo
                   </p>
-                  <Button onClick={addNewMedia}>Agregar medio manualmente</Button>
+                  <Button onClick={addNewMedia} size="sm" variant="outline">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar medio manualmente
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -244,20 +247,12 @@ export default function MediaPage() {
 
       {mediaItems.length > 0 && (
         <div className="mt-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Medios ({mediaItems.length})</h2>
-            <div className="space-x-2">
-              <Button onClick={addNewMedia} variant="outline" size="sm">
-                Añadir medio
-              </Button>
-            </div>
-          </div>
           <MediaList mediaItems={mediaItems} onUpdate={updateMedia} onRemove={removeMedia} />
           {mediaItems.length > 0 && (
             <div className="mt-6 flex justify-end gap-4">
               <Button variant="outline" onClick={handleCopyAll}>
                 <Copy className="mr-2 h-4 w-4" />
-                Copiar al portapapeles
+                Copiar todo al portapapeles
               </Button>
 
               <Button onClick={handleSaveAll} disabled={isLoading}>

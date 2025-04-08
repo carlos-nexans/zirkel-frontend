@@ -26,7 +26,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       title: "Principal",
       items: [
         {
-          title: "Alta de espacios",
+          title: "Gestión de espacios",
           url: "/media",
           icon: ImageIcon,
           isActive: pathname === "/media",

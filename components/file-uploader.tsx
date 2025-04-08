@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Upload, FileUp } from "lucide-react"
+import { Upload, FileUp, Paperclip, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -91,6 +91,7 @@ export function FileUploader({ onUpload, isLoading }: FileUploaderProps) {
                 onClick={() => document.getElementById("file-upload")?.click()}
                 disabled={isLoading}
               >
+                <Paperclip className="mr-2 h-4 w-4" />
                 Seleccionar archivo
               </Button>
             </div>
@@ -103,6 +104,7 @@ export function FileUploader({ onUpload, isLoading }: FileUploaderProps) {
                 <span className="text-sm font-medium truncate max-w-[200px]">{file.name}</span>
               </div>
               <Button type="submit" size="sm">
+                <Sparkles className="mr-2 h-4 w-4" />
                 Procesar
               </Button>
             </div>
