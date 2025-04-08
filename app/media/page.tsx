@@ -5,9 +5,10 @@ import { FileUploader } from "@/components/file-uploader"
 import { useToast } from "@/components/ui/use-toast"
 import { Button } from "@/components/ui/button"
 import { MediaList } from "@/components/media-list"
-import { Copy, Save } from "lucide-react"
+import { Copy, FileText, Plus, Save } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { MediaFormData } from "@/app/types"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function MediaPage() {
   const [mediaItems, setMediaItems] = useState<MediaFormData[]>([])
@@ -206,27 +207,40 @@ export default function MediaPage() {
     <div>
       <h1 className="text-3xl font-bold mb-6">Gestión de Medios</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-8">
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Subir archivo</h2>
-          <FileUploader onUpload={handleFileUpload} isLoading={isLoading} />
-        </div>
-
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Agregar manualmente</h2>
-          <Card className="w-full">
-            <CardContent className="pt-6">
-              <div className="text-center p-6">
-                <h3 className="text-lg font-semibold mb-2">Crear nuevo medio</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Agrega medios manualmente sin necesidad de subir un archivo
-                </p>
-                <Button onClick={addNewMedia}>Agregar medio manualmente</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <Tabs defaultValue="file">
+        <TabsList>
+          <TabsTrigger value="file">
+            <FileText className="mr-2 h-4 w-4" />
+            Subir archivo
+          </TabsTrigger>
+          <TabsTrigger value="manual">
+            <Plus className="mr-2 h-4 w-4" />
+            Agregar manualmente
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="file">
+          <div className="py-6">
+            <h2 className="text-xl font-semibold mb-4">Subir archivo</h2>
+            <FileUploader onUpload={handleFileUpload} isLoading={isLoading} />
+          </div>
+        </TabsContent>
+        <TabsContent value="manual">
+          <div className="py-6">
+            <h2 className="text-xl font-semibold mb-4">Agregar manualmente</h2>
+            <Card className="w-full">
+              <CardContent className="pt-6">
+                <div className="text-center p-6">
+                  <h3 className="text-lg font-semibold mb-2">Crear nuevo medio</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Agrega medios manualmente sin necesidad de subir un archivo
+                  </p>
+                  <Button onClick={addNewMedia}>Agregar medio manualmente</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {mediaItems.length > 0 && (
         <div className="mt-8">
