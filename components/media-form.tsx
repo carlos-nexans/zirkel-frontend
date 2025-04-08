@@ -1,0 +1,471 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Copy, Save } from "lucide-react"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/components/ui/use-toast"
+import type { MediaFormData } from "@/app/page"
+
+interface MediaFormProps {
+  initialData: MediaFormData
+  onUpdate?: (data: MediaFormData) => void
+}
+
+// Update the formSchema to include the id field
+const formSchema = z.object({
+  id: z.string(),
+  proveedor: z.string().min(1, "El proveedor es requerido"),
+  tipoMedio: z.string().min(1, "El tipo de medio es requerido"),
+  ciudad: z.string().min(1, "La ciudad es requerida"),
+  estado: z.string().min(1, "El estado es requerido"),
+  costo: z.coerce.number().min(0, "El costo debe ser un número positivo"),
+  costoInstalacion: z.coerce.number().min(0, "El costo de instalación debe ser un número positivo"),
+  claveZirkel: z.string().min(1, "La clave ZIRKEL es requerida"),
+  coordenadas: z.string().min(1, "Las coordenadas son requeridas"),
+  base: z.coerce.number().min(0, "La base debe ser un número positivo"),
+  altura: z.coerce.number().min(0, "La altura debe ser un número positivo"),
+  tamano: z.string().min(1, "El tamaño es requerido"),
+  iluminacion: z.string().min(1, "La iluminación es requerida"),
+  vista: z.string().min(1, "La vista es requerida"),
+  orientacion: z.string().min(1, "La orientación es requerida"),
+  formato: z.string().min(1, "El formato es requerido"),
+  caracteristica: z.string().min(1, "La característica es requerida"),
+  tarifaVenta: z.coerce.number().min(0, "La tarifa de venta debe ser un número positivo"),
+  impactosMes: z.coerce.number().min(0, "Los impactos por mes deben ser un número positivo"),
+  impactosSemana: z.coerce.number().min(0, "Los impactos por semana deben ser un número positivo"),
+  impactosDia: z.coerce.number().min(0, "Los impactos por día deben ser un número positivo"),
+})
+
+export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
+  const [isSaving, setIsSaving] = useState(false)
+  const { toast } = useToast()
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: initialData,
+  })
+
+  // Watch for form changes and update parent component
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      if (onUpdate) {
+        onUpdate({ ...initialData, ...value } as MediaFormData)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [form.watch, onUpdate, initialData])
+
+  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsSaving(true)
+
+    try {
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      // Update the parent component with the new data
+      if (onUpdate) {
+        onUpdate({ ...initialData, ...values } as MediaFormData)
+      }
+
+      toast({
+        title: "Datos guardados",
+        description: "Los datos han sido guardados correctamente.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Hubo un problema al guardar los datos.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const copyToClipboard = () => {
+    const formValues = form.getValues()
+    navigator.clipboard.writeText(JSON.stringify(formValues, null, 2))
+
+    toast({
+      title: "Copiado al portapapeles",
+      description: "Los datos han sido copiados en formato JSON.",
+    })
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Datos del Medio</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="proveedor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Proveedor</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tipoMedio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Medio</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Espectacular">Espectacular</SelectItem>
+                          <SelectItem value="Mural">Mural</SelectItem>
+                          <SelectItem value="Pantalla Digital">Pantalla Digital</SelectItem>
+                          <SelectItem value="Valla">Valla</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ciudad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ciudad</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="estado"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estado</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="costo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="costoInstalacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo de Instalación</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="claveZirkel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Clave ZIRKEL</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="coordenadas"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Coordenadas</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tarifaVenta"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tarifa de Venta</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="base"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Base (m)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="altura"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Altura (m)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tamano"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tamaño</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="iluminacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Iluminación</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="LED">LED</SelectItem>
+                          <SelectItem value="Fluorescente">Fluorescente</SelectItem>
+                          <SelectItem value="Sin iluminación">Sin iluminación</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="vista"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vista</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar vista" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Frontal">Frontal</SelectItem>
+                          <SelectItem value="Lateral">Lateral</SelectItem>
+                          <SelectItem value="Posterior">Posterior</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="orientacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Orientación</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar orientación" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Norte">Norte</SelectItem>
+                          <SelectItem value="Sur">Sur</SelectItem>
+                          <SelectItem value="Este">Este</SelectItem>
+                          <SelectItem value="Oeste">Oeste</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="formato"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Formato</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar formato" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Digital">Digital</SelectItem>
+                          <SelectItem value="Impreso">Impreso</SelectItem>
+                          <SelectItem value="Mixto">Mixto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="caracteristica"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Característica</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <FormField
+                control={form.control}
+                name="impactosMes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Impactos por Mes</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="impactosSemana"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Impactos por Semana</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="impactosDia"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Impactos por Día</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <CardFooter className="flex justify-end gap-4 px-0">
+              <Button type="button" variant="outline" onClick={copyToClipboard}>
+                <Copy className="mr-2 h-4 w-4" />
+                Copiar al portapapeles
+              </Button>
+
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? (
+                  <>Guardando...</>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Guardar
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  )
+}
