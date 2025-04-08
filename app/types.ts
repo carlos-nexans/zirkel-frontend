@@ -1,25 +1,47 @@
 export interface MediaFormData {
   id: string
   proveedor: string
-  tipoMedio: string
-  ciudad: string
-  estado: string
+  claveOriginalSitio: string
   costo: number
-  costoInstalacion: number
+  costoInstalacion?: number
+  tipoMedio: string
+  estado: string
+  ciudad: string
   claveZirkel: string
+  ubicacion: string
+  colonia: string
+  delegacion?: string
+  municipio?: string
+  referencias?: string
+  latitud: number
+  longitud: number
   coordenadas: string
   base: number
   altura: number
-  tamano: string
+  pixeles?: string
   iluminacion: string
   vista: string
   orientacion: string
   formato: string
-  caracteristica: string
+  caracteristica?: string
   tarifaVenta: number
-  impactosMes: number
-  impactosSemana: number
-  impactosDia: number
+  impactosMes?: number
+  impactosSemana?: number
+  impactosDia?: number
+  clasificacion?: string
+  nse?: string
+  showInPdf: {
+    tipoMedio: boolean
+    estado: boolean
+    ciudad: boolean
+    claveZirkel: boolean
+    ubicacion: boolean
+    coordenadas: boolean
+    iluminacion: boolean
+    vista: boolean
+    formato: boolean
+    impactosMes: boolean
+  }
 }
 
 export interface FilterValues {

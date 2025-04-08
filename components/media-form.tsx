@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/components/ui/use-toast"
-import type { MediaFormData } from "@/app/page"
+import type { MediaFormData } from "@/app/types"
 
 interface MediaFormProps {
   initialData: MediaFormData
@@ -23,26 +23,36 @@ interface MediaFormProps {
 // Update the formSchema to include the id field
 const formSchema = z.object({
   id: z.string(),
-  proveedor: z.string().min(1, "El proveedor es requerido"),
-  tipoMedio: z.string().min(1, "El tipo de medio es requerido"),
-  ciudad: z.string().min(1, "La ciudad es requerida"),
-  estado: z.string().min(1, "El estado es requerido"),
-  costo: z.coerce.number().min(0, "El costo debe ser un número positivo"),
-  costoInstalacion: z.coerce.number().min(0, "El costo de instalación debe ser un número positivo"),
-  claveZirkel: z.string().min(1, "La clave ZIRKEL es requerida"),
-  coordenadas: z.string().min(1, "Las coordenadas son requeridas"),
-  base: z.coerce.number().min(0, "La base debe ser un número positivo"),
-  altura: z.coerce.number().min(0, "La altura debe ser un número positivo"),
-  tamano: z.string().min(1, "El tamaño es requerido"),
-  iluminacion: z.string().min(1, "La iluminación es requerida"),
-  vista: z.string().min(1, "La vista es requerida"),
-  orientacion: z.string().min(1, "La orientación es requerida"),
-  formato: z.string().min(1, "El formato es requerido"),
-  caracteristica: z.string().min(1, "La característica es requerida"),
-  tarifaVenta: z.coerce.number().min(0, "La tarifa de venta debe ser un número positivo"),
-  impactosMes: z.coerce.number().min(0, "Los impactos por mes deben ser un número positivo"),
-  impactosSemana: z.coerce.number().min(0, "Los impactos por semana deben ser un número positivo"),
-  impactosDia: z.coerce.number().min(0, "Los impactos por día deben ser un número positivo"),
+  proveedor: z.string().min(1, { message: "El proveedor es requerido" }),
+  claveOriginalSitio: z.string().min(1, { message: "La clave original del sitio es requerida" }),
+  costo: z.coerce.number().min(0, { message: "El costo debe ser mayor o igual a 0" }),
+  costoInstalacion: z.coerce.number().min(0, { message: "El costo de instalación debe ser mayor o igual a 0" }).optional(),
+  tipoMedio: z.string().min(1, { message: "El tipo de medio es requerido" }),
+  estado: z.string().min(1, { message: "El estado es requerido" }),
+  ciudad: z.string().min(1, { message: "La ciudad es requerida" }),
+  claveZirkel: z.string().min(1, { message: "La clave ZIRKEL es requerida" }),
+  ubicacion: z.string().min(1, { message: "La ubicación es requerida" }),
+  colonia: z.string().min(1, { message: "La colonia es requerida" }),
+  delegacion: z.string().optional(),
+  municipio: z.string().optional(),
+  referencias: z.string().optional(),
+  latitud: z.coerce.number().min(-90).max(90, { message: "La latitud debe estar entre -90 y 90" }),
+  longitud: z.coerce.number().min(-180).max(180, { message: "La longitud debe estar entre -180 y 180" }),
+  coordenadas: z.string().min(1, { message: "Las coordenadas son requeridas" }),
+  base: z.coerce.number().min(0, { message: "La base debe ser mayor a 0" }),
+  altura: z.coerce.number().min(0, { message: "La altura debe ser mayor a 0" }),
+  pixeles: z.string().optional(),
+  iluminacion: z.string().min(1, { message: "La iluminación es requerida" }),
+  vista: z.string().min(1, { message: "La vista es requerida" }),
+  orientacion: z.string().min(1, { message: "La orientación es requerida" }),
+  formato: z.string().min(1, { message: "El formato es requerido" }),
+  caracteristica: z.string().optional(),
+  tarifaVenta: z.coerce.number().min(0, { message: "La tarifa de venta debe ser mayor o igual a 0" }),
+  impactosMes: z.coerce.number().min(0, { message: "Los impactos por mes deben ser mayor o igual a 0" }).optional(),
+  impactosSemana: z.coerce.number().min(0, { message: "Los impactos por semana deben ser mayor o igual a 0" }).optional(),
+  impactosDia: z.coerce.number().min(0, { message: "Los impactos por día deben ser mayor o igual a 0" }).optional(),
+  clasificacion: z.string().optional(),
+  nse: z.string().optional(),
 })
 
 export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
@@ -109,14 +119,39 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
+            {/* Información Básica */}
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Información Básica</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <FormField
                   control={form.control}
                   name="proveedor"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Proveedor</FormLabel>
+                      <FormLabel>Proveedor *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar proveedor" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="MediaCorp">MediaCorp</SelectItem>
+                          <SelectItem value="PubliMax">PubliMax</SelectItem>
+                          <SelectItem value="AdVision">AdVision</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="claveOriginalSitio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Clave Original del Sitio *</FormLabel>
                       <FormControl>
                         <Input {...field} />
                       </FormControl>
@@ -127,10 +162,70 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
 
                 <FormField
                   control={form.control}
+                  name="claveZirkel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Clave ZIRKEL *</FormLabel>
+                      <FormControl>
+                        <Input {...field} readOnly />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <FormField
+                  control={form.control}
+                  name="costo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo del Espacio *</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="costoInstalacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo de Instalación</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tarifaVenta"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tarifa de Venta *</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} readOnly />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+                <FormField
+                  control={form.control}
                   name="tipoMedio"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Tipo de Medio</FormLabel>
+                      <FormLabel>Tipo de Medio *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -138,10 +233,22 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Espectacular">Espectacular</SelectItem>
-                          <SelectItem value="Mural">Mural</SelectItem>
-                          <SelectItem value="Pantalla Digital">Pantalla Digital</SelectItem>
-                          <SelectItem value="Valla">Valla</SelectItem>
+                          <SelectItem value="Aeropuertos">Aeropuertos</SelectItem>
+                          <SelectItem value="Bajopuentes">Bajopuentes</SelectItem>
+                          <SelectItem value="Carteleras">Carteleras</SelectItem>
+                          <SelectItem value="Gimnasios">Gimnasios</SelectItem>
+                          <SelectItem value="Institutos Educativos">Institutos Educativos</SelectItem>
+                          <SelectItem value="Mupi">Mupi</SelectItem>
+                          <SelectItem value="Mupi Urbano">Mupi Urbano</SelectItem>
+                          <SelectItem value="Mupis Digitales">Mupis Digitales</SelectItem>
+                          <SelectItem value="Muros">Muros</SelectItem>
+                          <SelectItem value="Pantallas Digitales">Pantallas Digitales</SelectItem>
+                          <SelectItem value="Puente Digital">Puente Digital</SelectItem>
+                          <SelectItem value="Puentes">Puentes</SelectItem>
+                          <SelectItem value="Sitios de Taxis">Sitios de Taxis</SelectItem>
+                          <SelectItem value="Suburbano">Suburbano</SelectItem>
+                          <SelectItem value="Totem Digital">Totem Digital</SelectItem>
+                          <SelectItem value="Valla Fija">Valla Fija</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -249,6 +356,7 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
               </div>
 
               <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="base"
@@ -276,21 +384,7 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="tamano"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tamaño</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
+                </div>
                 <FormField
                   control={form.control}
                   name="iluminacion"
@@ -374,9 +468,9 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="Digital">Digital</SelectItem>
-                          <SelectItem value="Impreso">Impreso</SelectItem>
-                          <SelectItem value="Mixto">Mixto</SelectItem>
+                          <SelectItem value="Unipolar">Unipolar</SelectItem>
+                          <SelectItem value="Adosado">Adosado</SelectItem>
+                          <SelectItem value="Estructura">Estructura</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
