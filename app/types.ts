@@ -30,6 +30,7 @@ export interface MediaFormData {
   impactosDia?: number
   clasificacion?: string
   nse?: string
+  imageUrl?: string
   showInPdf: {
     tipoMedio: boolean
     estado: boolean

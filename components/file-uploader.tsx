@@ -11,9 +11,22 @@ import { Progress } from "@/components/ui/progress"
 interface FileUploaderProps {
   onUpload: (file: File) => void
   isLoading: boolean
+  accept?: string
+  currentImage?: string
+  title?: string
+  description?: string
+  supportedFormats?: string
 }
 
-export function FileUploader({ onUpload, isLoading }: FileUploaderProps) {
+export function FileUploader({ 
+  onUpload, 
+  isLoading, 
+  accept,
+  currentImage,
+  title,
+  description,
+  supportedFormats
+}: FileUploaderProps) {
   const [file, setFile] = useState<File | null>(null)
   const [dragActive, setDragActive] = useState(false)
 
@@ -72,18 +85,16 @@ export function FileUploader({ onUpload, isLoading }: FileUploaderProps) {
                 <FileUp className="h-8 w-8 text-primary" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Subir archivo</h3>
-                <p className="text-sm text-muted-foreground">
-                  Arrastra y suelta un archivo o haz clic para seleccionar
-                </p>
-                <p className="text-xs text-muted-foreground">Formatos soportados: PDF, Excel, CSV</p>
+                <h3 className="text-lg font-semibold">{title}</h3>
+                <p className="text-sm text-muted-foreground">{description}</p>
+                <p className="text-xs text-muted-foreground">{supportedFormats}</p>
               </div>
               <input
                 id="file-upload"
                 type="file"
                 className="hidden"
                 onChange={handleChange}
-                accept=".pdf,.xls,.xlsx,.csv"
+                accept={accept}
               />
               <Button
                 type="button"
@@ -96,6 +107,12 @@ export function FileUploader({ onUpload, isLoading }: FileUploaderProps) {
               </Button>
             </div>
           </div>
+
+          {currentImage && (
+            <div className="mt-4">
+              <img src={currentImage} alt="Preview" className="w-full max-h-48 object-cover rounded-lg" />
+            </div>
+          )}
 
           {file && !isLoading && (
             <div className="flex items-center justify-between p-2 border rounded-lg">

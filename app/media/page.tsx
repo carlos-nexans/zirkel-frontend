@@ -287,7 +287,7 @@ export default function MediaPage() {
         <TabsContent value="file">
           <div className="py-6">
             <h2 className="text-xl font-semibold mb-4">Subir archivo</h2>
-            <FileUploader onUpload={handleFileUpload} isLoading={isLoading} />
+            <FileUploader onUpload={handleFileUpload} isLoading={isLoading} title="Subir archivo" description="Arrastra y suelta un archivo o haz clic para seleccionar" supportedFormats="Formatos soportados: PDF, Excel, CSV" accept=".pdf,.xls,.xlsx,.csv" />
           </div>
         </TabsContent>
         <TabsContent value="manual">

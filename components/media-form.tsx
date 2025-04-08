@@ -9,6 +9,7 @@ import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { MediaUploader } from "@/components/media-uploader"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
@@ -53,6 +54,7 @@ const formSchema = z.object({
   impactosDia: z.coerce.number().min(0, { message: "Los impactos por día deben ser mayor o igual a 0" }).optional(),
   clasificacion: z.string().optional(),
   nse: z.string().optional(),
+  imageUrl: z.string().optional(),
 })
 
 interface Provider {
@@ -62,6 +64,7 @@ interface Provider {
 
 export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [providers, setProviders] = useState<Provider[]>([])
   const { toast } = useToast()
 
@@ -576,6 +579,54 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="imageUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Imagen del medio</FormLabel>
+                  <FormControl>
+                    <MediaUploader
+                      onUpload={async (file) => {
+                        setIsUploading(true)
+                        try {
+                          // Here you would typically upload the file to your server or cloud storage
+                          // For now, we'll create a local URL
+                          const imageUrl = URL.createObjectURL(file)
+                          field.onChange(imageUrl)
+                          if (onUpdate) {
+                            onUpdate({ ...form.getValues(), imageUrl, showInPdf: initialData.showInPdf })
+                          }
+                          toast({
+                            title: "Imagen subida",
+                            description: "La imagen se ha subido correctamente"
+                          })
+                        } catch (error) {
+                          console.error('Error uploading image:', error)
+                          toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: "No se pudo subir la imagen"
+                          })
+                        } finally {
+                          setIsUploading(false)
+                        }
+                      }}
+                      isLoading={isUploading}
+                      currentImage={field.value}
+                      onRemove={() => {
+                        field.onChange('')
+                        if (onUpdate) {
+                          onUpdate({ ...form.getValues(), imageUrl: '', showInPdf: initialData.showInPdf })
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <CardFooter className="flex justify-end gap-4 px-0">
               <Button type="button" variant="outline" onClick={copyToClipboard}>
