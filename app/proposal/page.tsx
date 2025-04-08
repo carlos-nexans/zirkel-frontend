@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useToast } from "@/components/ui/use-toast"
 import { FilterPanel } from "@/components/proposal/filter-panel"
-import { GeolocationFilter } from "@/components/proposal/geolocation-filter"
+
 import { ResultsList } from "@/components/proposal/results-list"
 import { ProposalAction } from "@/components/proposal/proposal-action"
 import { Separator } from "@/components/ui/separator"
@@ -132,29 +132,7 @@ export default function ProposalPage() {
             <FilterPanel onSubmit={handleFilterSubmit} isLoading={isLoading} />
           </div>
 
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Ubicación</h2>
-            <GeolocationFilter
-              onLocationSelect={(location) => {
-                handleFilterSubmit({
-                  provider: "",
-                  mediaType: "",
-                  state: "",
-                  city: "",
-                  costoMin: 0,
-                  costoMax: 0,
-                  tarifaMin: 0,
-                  tarifaMax: 0,
-                  orientation: "",
-                  illumination: "",
-                  nseClassification: "",
-                  impactsMin: 0,
-                  location,
-                })
-              }}
-              isLoading={isLoading}
-            />
-          </div>
+
         </div>
 
         <div className="lg:col-span-2">

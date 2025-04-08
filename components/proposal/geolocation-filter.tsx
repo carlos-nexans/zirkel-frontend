@@ -88,14 +88,15 @@ export function GeolocationFilter({ onLocationSelect, isLoading }: GeolocationFi
     }
   }, [radius, mapInitialized, selectedLocation])
 
-  const handleSearch = () => {
+  // Update parent component whenever location or radius changes
+  useEffect(() => {
     if (selectedLocation) {
       onLocationSelect({
         ...selectedLocation,
         radius,
       })
     }
-  }
+  }, [selectedLocation, radius, onLocationSelect])
 
   return (
     <Card>
@@ -128,10 +129,10 @@ export function GeolocationFilter({ onLocationSelect, isLoading }: GeolocationFi
             </div>
           )}
 
-          <Button onClick={handleSearch} className="w-full" disabled={!selectedLocation || isLoading}>
-            <MapPin className="mr-2 h-4 w-4" />
-            {isLoading ? "Buscando..." : "Buscar en esta ubicación"}
-          </Button>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="h-4 w-4" />
+            {selectedLocation ? "Ubicación seleccionada" : "Haz clic en el mapa para seleccionar ubicación"}
+          </div>
         </div>
       </CardContent>
     </Card>

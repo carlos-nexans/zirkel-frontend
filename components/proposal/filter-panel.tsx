@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react"
+import { GeolocationFilter } from "./geolocation-filter"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -65,6 +66,7 @@ export function FilterPanel({ onSubmit, isLoading }: FilterPanelProps) {
   const [selectedState, setSelectedState] = useState<string>("")
   const [costoRange, setCostoRange] = useState([0, 100000])
   const [tarifaRange, setTarifaRange] = useState([0, 100000])
+  const [location, setLocation] = useState<{ lat: number; lng: number; radius: number } | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -91,7 +93,17 @@ export function FilterPanel({ onSubmit, isLoading }: FilterPanelProps) {
     values.tarifaMin = tarifaRange[0]
     values.tarifaMax = tarifaRange[1]
 
-    onSubmit(values as FilterValues)
+    // Include location in the submission if it exists
+    onSubmit({
+      ...values,
+      ...(location && {
+        location: {
+          lat: location.lat,
+          lng: location.lng,
+          radius: location.radius
+        }
+      })
+    } as FilterValues)
   }
 
   const addAdvancedFilter = (filterId: string) => {
@@ -429,9 +441,21 @@ export function FilterPanel({ onSubmit, isLoading }: FilterPanelProps) {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Buscando..." : "Buscar espacios"}
-            </Button>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-semibold">Ubicación</h3>
+                </div>
+                <GeolocationFilter
+                  onLocationSelect={setLocation}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Buscando..." : "Buscar espacios"}
+              </Button>
+            </div>
           </form>
         </Form>
       </CardContent>
