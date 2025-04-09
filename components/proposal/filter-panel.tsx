@@ -13,8 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { Slider } from "@/components/ui/slider"
-import type { FilterValues } from "@/app/proposal/page"
+import { Slider } from "@/components/proposal/multi-range-slider"
+import type { FilterValues } from "@/app/types"
 
 interface FilterPanelProps {
   onSubmit: (values: FilterValues) => void
