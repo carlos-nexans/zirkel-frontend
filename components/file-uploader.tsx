@@ -7,9 +7,11 @@ import { Upload, FileUp, Paperclip, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 interface FileUploaderProps {
-  onUpload: (file: File) => void
+  onUpload: (file: File, provider: string) => void
   isLoading: boolean
   accept?: string
   currentImage?: string
@@ -18,17 +20,27 @@ interface FileUploaderProps {
   supportedFormats?: string
 }
 
-export function FileUploader({ 
-  onUpload, 
-  isLoading, 
+export function FileUploader({
+  onUpload,
+  isLoading,
   accept,
   currentImage,
   title,
   description,
-  supportedFormats
+  supportedFormats,
 }: FileUploaderProps) {
   const [file, setFile] = useState<File | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [provider, setProvider] = useState<string>("")
+
+  // Mock providers data
+  const providers = [
+    { id: 1, name: "MediaCorp" },
+    { id: 2, name: "PubliMax" },
+    { id: 3, name: "VisualAds" },
+    { id: 4, name: "OutdoorMedia" },
+    { id: 5, name: "CityAds" },
+  ]
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -62,8 +74,8 @@ export function FileUploader({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (file) {
-      onUpload(file)
+    if (file && provider) {
+      onUpload(file, provider)
     }
   }
 
@@ -71,6 +83,26 @@ export function FileUploader({
     <Card className="w-full">
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Provider selection */}
+          <div className="mb-4">
+            <Label htmlFor="provider">Proveedor *</Label>
+            <Select onValueChange={setProvider} value={provider}>
+              <SelectTrigger id="provider">
+                <SelectValue placeholder="Seleccionar proveedor" />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.map((p) => (
+                  <SelectItem key={p.id} value={p.name}>
+                    {p.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              El proveedor seleccionado se aplicará a todos los medios del archivo
+            </p>
+          </div>
+
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center ${
               dragActive ? "border-primary bg-primary/5" : "border-gray-300"
@@ -89,13 +121,7 @@ export function FileUploader({
                 <p className="text-sm text-muted-foreground">{description}</p>
                 <p className="text-xs text-muted-foreground">{supportedFormats}</p>
               </div>
-              <input
-                id="file-upload"
-                type="file"
-                className="hidden"
-                onChange={handleChange}
-                accept={accept}
-              />
+              <input id="file-upload" type="file" className="hidden" onChange={handleChange} accept={accept} />
               <Button
                 type="button"
                 variant="outline"
@@ -110,7 +136,11 @@ export function FileUploader({
 
           {currentImage && (
             <div className="mt-4">
-              <img src={currentImage} alt="Preview" className="w-full max-h-48 object-cover rounded-lg" />
+              <img
+                src={currentImage || "/placeholder.svg"}
+                alt="Preview"
+                className="w-full max-h-48 object-cover rounded-lg"
+              />
             </div>
           )}
 
@@ -120,7 +150,7 @@ export function FileUploader({
                 <Upload className="h-5 w-5 text-muted-foreground" />
                 <span className="text-sm font-medium truncate max-w-[200px]">{file.name}</span>
               </div>
-              <Button type="submit" size="sm">
+              <Button type="submit" size="sm" disabled={!provider}>
                 <Sparkles className="mr-2 h-4 w-4" />
                 Procesar
               </Button>

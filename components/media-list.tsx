@@ -67,8 +67,9 @@ export function MediaList({ mediaItems, onUpdate, onRemove }: MediaListProps) {
       {mediaItems.map((item) => (
         <div key={item.id} className="border rounded-lg overflow-hidden">
           <div
-            className={`p-4 flex justify-between items-center cursor-pointer ${reviewedItems[item.id] ? "bg-green-50" : "bg-gray-50"
-              }`}
+            className={`p-4 flex justify-between items-center cursor-pointer ${
+              reviewedItems[item.id] ? "bg-green-50" : "bg-gray-50"
+            }`}
             onClick={() => toggleExpand(item.id)}
           >
             <div className="flex items-center space-x-2">
@@ -78,12 +79,11 @@ export function MediaList({ mediaItems, onUpdate, onRemove }: MediaListProps) {
                   {item.proveedor || "Nuevo medio"} - {item.tipoMedio}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {item.ciudad}, {item.estado} - {item.claveZirkel}
+                  {item.claveOriginalSitio}, {item.estado}, {item.ciudad} - {item.claveZirkel}
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-
               <Button
                 onClick={(e) => {
                   e.stopPropagation()

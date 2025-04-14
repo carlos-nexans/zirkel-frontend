@@ -100,9 +100,9 @@ export function FilterPanel({ onSubmit, isLoading }: FilterPanelProps) {
         location: {
           lat: location.lat,
           lng: location.lng,
-          radius: location.radius
-        }
-      })
+          radius: location.radius,
+        },
+      }),
     } as FilterValues)
   }
 
@@ -446,10 +446,7 @@ export function FilterPanel({ onSubmit, isLoading }: FilterPanelProps) {
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold">Ubicación</h3>
                 </div>
-                <GeolocationFilter
-                  onLocationSelect={setLocation}
-                  isLoading={isLoading}
-                />
+                <GeolocationFilter onLocationSelect={setLocation} isLoading={isLoading} />
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

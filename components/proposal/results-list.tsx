@@ -5,10 +5,10 @@ import { Loader2, MapPin } from "lucide-react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
-import type { MediaResult } from "@/app/proposal/page"
+import type { MediaFormData } from "@/app/types"
 
 interface ResultsListProps {
-  results: MediaResult[]
+  results: MediaFormData[]
   isLoading: boolean
   selectedItems: string[]
   onItemSelect: (id: string, isSelected: boolean) => void
@@ -47,44 +47,70 @@ export function ResultsList({ results, isLoading, selectedItems, onItemSelect }:
           <Card key={result.id} className="overflow-hidden">
             <div className="relative">
               <img
-                src={result.imageUrl || "/placeholder.svg"}
-                alt={`${result.provider} - ${result.mediaType}`}
+                src={result.imageUrl || "/placeholder.svg?height=200&width=300&text=Sin+Imagen"}
+                alt={`${result.proveedor} - ${result.tipoMedio}`}
                 className="w-full h-40 object-cover"
               />
             </div>
 
             <CardContent className="p-4">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-medium">{result.provider}</h3>
-                <Badge variant="outline">{result.mediaType}</Badge>
+                <h3 className="font-medium">{result.proveedor}</h3>
+                <Badge variant="outline">{result.tipoMedio}</Badge>
               </div>
 
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ubicación:</span>
+                  <span className="text-muted-foreground">Clave Original:</span>
+                  <span>{result.claveOriginalSitio}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Clave Zirkel:</span>
+                  <span>{result.claveZirkel}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Base × Altura:</span>
                   <span>
-                    {result.city}, {result.state}
+                    {result.base}m × {result.altura}m
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Costo:</span>
-                  <span className="font-medium">${result.cost.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Coordenadas:</span>
+                  <span>{result.coordenadas}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tarifa:</span>
-                  <span className="font-medium">${result.tarifa.toLocaleString()}</span>
+                  <span className="text-muted-foreground">Ubicación:</span>
+                  <span>
+                    {result.ciudad}, {result.estado}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Formato:</span>
-                  <span>{result.format}</span>
+                  <span className="text-muted-foreground">Costo Espacio:</span>
+                  <span className="font-medium">${result.costo.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">NSE:</span>
-                  <span>{result.nseClassification}</span>
+                  <span className="text-muted-foreground">Costo Instalación:</span>
+                  <span className="font-medium">${result.costoInstalacion?.toLocaleString() || "N/A"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Iluminación:</span>
+                  <span>{result.iluminacion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Vista:</span>
+                  <span>{result.vista}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Orientación:</span>
+                  <span>{result.orientacion}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Característica:</span>
+                  <span>{result.caracteristica || "N/A"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Impactos/mes:</span>
-                  <span>{result.impacts.toLocaleString()}</span>
+                  <span>{result.impactosMes?.toLocaleString() || "N/A"}</span>
                 </div>
               </div>
             </CardContent>
@@ -93,7 +119,7 @@ export function ResultsList({ results, isLoading, selectedItems, onItemSelect }:
               <div className="flex items-center text-xs text-muted-foreground">
                 <MapPin className="h-3 w-3 mr-1" />
                 <span>
-                  {result.location.lat.toFixed(4)}, {result.location.lng.toFixed(4)}
+                  {result.latitud.toFixed(4)}, {result.longitud.toFixed(4)}
                 </span>
               </div>
 

@@ -5,7 +5,6 @@ import { MapPin } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import "leaflet/dist/leaflet.css"
 
@@ -101,7 +100,7 @@ export function GeolocationFilter({ onLocationSelect, isLoading }: GeolocationFi
   return (
     <Card>
       <CardContent className="pt-6 space-y-4">
-        <div id="map" className="h-[250px] rounded-md border relative z-0" style={{ background: '#f0f0f0' }}></div>
+        <div id="map" className="h-[250px] rounded-md border relative z-0" style={{ background: "#f0f0f0" }}></div>
 
         <div className="space-y-4">
           <div>

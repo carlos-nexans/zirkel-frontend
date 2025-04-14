@@ -15,7 +15,7 @@ export default function MediaPage() {
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (file: File, provider: string) => {
     setIsLoading(true)
 
     try {
@@ -30,7 +30,7 @@ export default function MediaPage() {
       const mockMediaItems: MediaFormData[] = [
         {
           id: "media-1",
-          proveedor: "MediaCorp",
+          proveedor: provider, // Use the selected provider
           claveOriginalSitio: "MC-001",
           costo: 15000,
           costoInstalacion: 5000,
@@ -38,44 +38,21 @@ export default function MediaPage() {
           estado: "CDMX",
           ciudad: "Ciudad de México",
           claveZirkel: "ZK-" + Math.floor(Math.random() * 10000),
-          ubicacion: "Av. Insurgentes Sur 1234",
-          colonia: "Del Valle",
-          delegacion: "Benito Juárez",
-          municipio: "",
-          referencias: "Frente a Plaza Universidad",
-          latitud: 19.4326,
-          longitud: -99.1332,
           coordenadas: "19.4326,-99.1332",
           base: 12.5,
           altura: 7.2,
-          pixeles: "1920x1080",
           iluminacion: "LED",
           vista: "Frontal",
           orientacion: "Norte",
-          formato: "Digital",
           caracteristica: "Alta visibilidad",
-          tarifaVenta: 33333,
           impactosMes: 150000,
-          impactosSemana: 35000,
-          impactosDia: 5000,
-          clasificacion: "Premium",
-          nse: "A/B",
-          showInPdf: {
-            tipoMedio: true,
-            estado: true,
-            ciudad: true,
-            claveZirkel: true,
-            ubicacion: true,
-            coordenadas: true,
-            iluminacion: true,
-            vista: true,
-            formato: true,
-            impactosMes: true,
-          },
+          imageUrl: "/placeholder.svg?height=200&width=300&text=Media+1",
+          latitud: 19.4326,
+          longitud: -99.1332,
         },
         {
           id: "media-2",
-          proveedor: "PubliMax",
+          proveedor: provider, // Use the selected provider
           claveOriginalSitio: "PM-002",
           costo: 12000,
           costoInstalacion: 3500,
@@ -83,40 +60,17 @@ export default function MediaPage() {
           estado: "Jalisco",
           ciudad: "Guadalajara",
           claveZirkel: "ZK-" + Math.floor(Math.random() * 10000),
-          ubicacion: "Av. López Mateos 567",
-          colonia: "Ladrón de Guevara",
-          delegacion: "",
-          municipio: "Guadalajara",
-          referencias: "Esquina con Av. Américas",
-          latitud: 20.6597,
-          longitud: -103.3496,
           coordenadas: "20.6597,-103.3496",
           base: 10.0,
           altura: 6.0,
-          pixeles: "",
           iluminacion: "Fluorescente",
           vista: "Lateral",
           orientacion: "Sur",
-          formato: "Impreso",
           caracteristica: "Zona comercial",
-          tarifaVenta: 25833,
           impactosMes: 120000,
-          impactosSemana: 28000,
-          impactosDia: 4000,
-          clasificacion: "Estándar",
-          nse: "B/C+",
-          showInPdf: {
-            tipoMedio: true,
-            estado: true,
-            ciudad: true,
-            claveZirkel: true,
-            ubicacion: true,
-            coordenadas: true,
-            iluminacion: true,
-            vista: true,
-            formato: true,
-            impactosMes: true,
-          },
+          imageUrl: "/placeholder.svg?height=200&width=300&text=Media+2",
+          latitud: 20.6597,
+          longitud: -103.3496,
         },
       ]
 
@@ -143,45 +97,18 @@ export default function MediaPage() {
       proveedor: "",
       claveOriginalSitio: "",
       costo: 0,
-      costoInstalacion: 0,
       tipoMedio: "",
       estado: "",
       ciudad: "",
       claveZirkel: "",
-      ubicacion: "",
-      colonia: "",
-      delegacion: "",
-      municipio: "",
-      referencias: "",
-      latitud: 0,
-      longitud: 0,
       coordenadas: "",
       base: 0,
       altura: 0,
-      pixeles: "",
       iluminacion: "",
       vista: "",
       orientacion: "",
-      formato: "",
-      caracteristica: "",
-      tarifaVenta: 0,
-      impactosMes: 0,
-      impactosSemana: 0,
-      impactosDia: 0,
-      clasificacion: "",
-      nse: "",
-      showInPdf: {
-        tipoMedio: true,
-        estado: true,
-        ciudad: true,
-        claveZirkel: true,
-        ubicacion: true,
-        coordenadas: true,
-        iluminacion: true,
-        vista: true,
-        formato: true,
-        impactosMes: true,
-      },
+      latitud: 0,
+      longitud: 0,
     }
 
     setMediaItems([...mediaItems, newMedia])
@@ -287,7 +214,14 @@ export default function MediaPage() {
         <TabsContent value="file">
           <div className="py-6">
             <h2 className="text-xl font-semibold mb-4">Subir archivo</h2>
-            <FileUploader onUpload={handleFileUpload} isLoading={isLoading} title="Subir archivo" description="Arrastra y suelta un archivo o haz clic para seleccionar" supportedFormats="Formatos soportados: PDF, Excel, CSV" accept=".pdf,.xls,.xlsx,.csv" />
+            <FileUploader
+              onUpload={handleFileUpload}
+              isLoading={isLoading}
+              title="Subir archivo"
+              description="Arrastra y suelta un archivo o haz clic para seleccionar"
+              supportedFormats="Formatos soportados: PDF, Excel, CSV"
+              accept=".pdf,.xls,.xlsx,.csv"
+            />
           </div>
         </TabsContent>
         <TabsContent value="manual">
