@@ -1,13 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { FilterPanel } from "@/components/proposal/filter-panel"
 
 import { ResultsList } from "@/components/proposal/results-list"
 import { ProposalAction } from "@/components/proposal/proposal-action"
 import { Separator } from "@/components/ui/separator"
 import type { FilterValues, MediaFormData } from "@/app/types"
+import { MediaData } from "@repo/common/types"
 
 export default function ProposalPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -27,7 +28,7 @@ export default function ProposalPage() {
       await response.json()
 
       // Mock results based on filters
-      const mockResults: MediaFormData[] = Array.from({ length: 12 }, (_, i) => ({
+      const mockResults: MediaData[] = Array.from({ length: 12 }, (_, i) => ({
         id: `media-${i + 1}`,
         proveedor: ["MediaCorp", "PubliMax", "VisualAds"][Math.floor(Math.random() * 3)],
         claveOriginalSitio: `ORIG-${1000 + i}`,

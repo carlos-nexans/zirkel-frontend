@@ -33,9 +33,11 @@ export default function RootLayout({
               <Separator orientation="vertical" className="mr-2 h-4" />
               <BreadcrumbNav />
             </header>
-            <div className="flex flex-1 flex-col p-4">{children}</div>
+            <div className="flex flex-1 flex-col p-4">
+              <Toaster />
+              {children}
+            </div>
           </SidebarInset>
-          <Toaster />
         </SidebarProvider>
       </body>
     </html>

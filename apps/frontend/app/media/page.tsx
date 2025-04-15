@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { FileUploader } from "@/components/file-uploader"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MediaList } from "@/components/media-list"
 import { Copy, FileText, Plus, Save } from "lucide-react"
@@ -14,6 +14,7 @@ export default function MediaPage() {
   const [mediaItems, setMediaItems] = useState<MediaFormData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
+
 
   const handleFileUpload = async (file: File, provider: string) => {
     setIsLoading(true)
@@ -30,7 +31,7 @@ export default function MediaPage() {
       const mockMediaItems: MediaFormData[] = [
         {
           id: "media-1",
-          proveedor: provider, // Use the selected provider
+          // proveedor: provider,
           claveOriginalSitio: "MC-001",
           costo: 15000,
           costoInstalacion: 5000,
@@ -52,7 +53,7 @@ export default function MediaPage() {
         },
         {
           id: "media-2",
-          proveedor: provider, // Use the selected provider
+          // proveedor: provider,
           claveOriginalSitio: "PM-002",
           costo: 12000,
           costoInstalacion: 3500,
@@ -94,7 +95,7 @@ export default function MediaPage() {
     const newId = `media-${mediaItems.length + 1}-${Date.now()}`
     const newMedia: MediaFormData = {
       id: newId,
-      proveedor: "",
+      // proveedor: "",
       claveOriginalSitio: "",
       costo: 0,
       tipoMedio: "",
