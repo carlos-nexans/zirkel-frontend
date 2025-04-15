@@ -1,0 +1,19 @@
+{
+    "name": "@repo/common",
+    "version": "0.0.0",
+    "type": "module",
+    "private": true,
+    "exports": {
+        "./*": "./*.ts"
+    },
+    "devDependencies": {
+        "@repo/eslint-config": "workspace:*",
+        "@repo/typescript-config": "workspace:*",
+        "@turbo/gen": "^2.5.0",
+        "@types/node": "^22.14.0",
+        "@types/react": "19.1.0",
+        "@types/react-dom": "19.1.1",
+        "eslint": "^9.24.0",
+        "typescript": "5.8.2"
+    }
+}

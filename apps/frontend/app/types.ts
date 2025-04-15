@@ -1,25 +1,4 @@
-export interface MediaFormData {
-  id: string
-  proveedor: string
-  claveOriginalSitio: string
-  claveZirkel: string
-  base: number
-  altura: number
-  coordenadas: string
-  ciudad: string
-  estado: string
-  tipoMedio: string
-  costo: number
-  costoInstalacion?: number
-  iluminacion: string
-  vista: string
-  orientacion: string
-  caracteristica?: string
-  impactosMes?: number
-  imageUrl?: string
-  latitud: number
-  longitud: number
-}
+import type {MediaData} from "@repo/common/types"
 
 export interface FilterValues {
   provider: string
@@ -40,3 +19,5 @@ export interface FilterValues {
     radius: number
   }
 }
+
+export type MediaFormData = Omit<MediaData, "proveedor">;

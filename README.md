@@ -1,6 +1,6 @@
-# Turborepo starter
+# zirkel-media-backoffice
 
-This Turborepo starter is maintained by the Turborepo core team.
+This is a Turborepo-powered monorepo for the Zirkel Media Backoffice project.
 
 ## Using this example
 
@@ -12,17 +12,18 @@ npx create-turbo@latest
 
 ## What's inside?
 
-This Turborepo includes the following packages/apps:
+This Turborepo includes the following packages and applications:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+- `apps/api`: Backend API application (details TBD)
+- `apps/frontend`: Frontend application (details TBD)
+- `packages/common`: Shared utilities and types
+- `packages/ui`: Shared UI component library
+- `packages/eslint-config`: Shared ESLint configurations
+- `packages/typescript-config`: Shared `tsconfig.json` configurations
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+Each package and application is written in [TypeScript](https://www.typescriptlang.org/).
 
 ### Utilities
 
@@ -34,20 +35,18 @@ This Turborepo has some additional tools already setup for you:
 
 ### Build
 
-To build all apps and packages, run the following command:
+To build all apps and packages, run the following command from the root directory:
 
-```
-cd my-turborepo
-pnpm build
+```sh
+npm run build
 ```
 
 ### Develop
 
-To develop all apps and packages, run the following command:
+To develop all apps and packages, run the following command from the root directory:
 
-```
-cd my-turborepo
-pnpm dev
+```sh
+npm run dev
 ```
 
 ### Remote Caching

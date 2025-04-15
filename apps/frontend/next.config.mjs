@@ -27,6 +27,7 @@ const nextConfig = {
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
   },
+  transpilePackages: ["@repo/ui", "@repo/common"],
   async redirects() {
     return [
       {
