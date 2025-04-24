@@ -1,17 +1,17 @@
+// Revisar luego
+// PROVEEDOR	CLAVE ORIGINAL	 COSTO	MEDIO	ESTADO 	CIUDAD	CLAVE	DIRECCIÓN	COLONIA	DELEGACIÓN / MUNICIPIO	REFERENCIA	COORDENADAS	BASE	ALTURA	ILUMINACIÓN	VISTA	ORIENTACIÓN	CARACTERISTICAS	CANTIDAD	 TARIFA	IMPACTOS MES	NSE Zona	Sector
 export interface MediaData {
-    id: string
     proveedor: string
     claveOriginalSitio: string
     claveZirkel: string
     base: number
     altura: number
-    coordenadas: string
     ciudad: string
     estado: string
     tipoMedio: string
     costo: number
     costoInstalacion?: number
-    iluminacion: string
+    iluminacion?: Iliminacion
     vista: string
     orientacion: Orientacion
     caracteristica?: string
@@ -20,6 +20,13 @@ export interface MediaData {
     latitud: number
     longitud: number
 }
+
+export type Iliminacion = 
+    | 'Si'
+    | 'Pantalla'
+    | 'No'
+    | 'Backlight'
+    | string;
 
 export type TipoMedio = 
     | 'Aeropuertos'
@@ -44,7 +51,8 @@ export type TipoMedio =
     | 'Suburbano'
     | 'Totem Digital'
     | 'Valla Fija'
-    | 'Vallas Móviles';
+    | 'Vallas Móviles'
+    | string;
 
 export type Vista = 
     | 'Natural'

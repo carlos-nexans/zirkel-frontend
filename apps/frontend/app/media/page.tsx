@@ -9,7 +9,7 @@ import { Copy, FileText, Plus, Save } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { MediaFormData } from "@/app/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Caracteristica, Orientacion, Proveedor, TipoMedio, Vista } from "@repo/common/types"
+import { Caracteristica, MediaData, Orientacion, Proveedor, TipoMedio, Vista } from "@repo/common/types"
 import { useProveedores } from "@/hooks/use-proveedores"
 
 export type MediaDataExtraction = {
@@ -46,7 +46,7 @@ export default function MediaPage() {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
       const url = `${baseUrl}/extract`;
-      
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -150,21 +150,41 @@ export default function MediaPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const mediaData: MediaData[] = mediaItems.map((item) => ({
+        ...item,
+        proveedor: provider?.proveedor!,
+        // Remove base64 image from the data, it will fly as a file
+        imageUrl: undefined,
+      }))
 
-      // Mock POST API call to jsonplaceholder
-      const response = await fetch("https://jsonplaceholder.typicode.com/posts", {
+      const formData = new FormData();
+      formData.append('mediaDataList', JSON.stringify(mediaData));
+
+      // Para cada media que tenga imagen
+      for (const media of mediaItems) {
+        if (media.imageUrl) {
+          if (media.imageUrl.startsWith('blob:')) {
+            // Fetch the blob URL to get the file
+            const response = await fetch(media.imageUrl);
+            const blob = await response.blob();
+            // Create a File object from the blob
+            const file = new File([blob], media.claveZirkel, { type: blob.type });
+            formData.append('files', file);
+          } else {
+            // Convertir base64 a File
+            const base64Response = await fetch(media.imageUrl);
+            const blob = await base64Response.blob();
+            const file = new File([blob], media.claveZirkel, { type: blob.type });
+            formData.append('files', file);
+          }
+        }
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+      const response = await fetch(`${baseUrl}/medios`, {
         method: "POST",
-        body: JSON.stringify({
-          title: "Guardar Medios",
-          body: "Datos de medios guardados",
-          mediaItems: mediaItems,
-        }),
-        headers: {
-          "Content-type": "application/json; charset=UTF-8",
-        },
-      })
+        body: formData
+      });
 
       await response.json()
 
@@ -193,11 +213,54 @@ export default function MediaPage() {
       return
     }
 
-    navigator.clipboard.writeText(JSON.stringify(mediaItems, null, 2))
+    // Define CSV headers
+    const headers = [
+      'Clave Original',
+      'Clave ZIRKEL',
+      'Base',
+      'Altura',
+      'Ciudad',
+      'Estado',
+      'Tipo de Medio',
+      'Costo',
+      'Costo Instalación',
+      'Iluminación',
+      'Vista',
+      'Orientación',
+      'Característica',
+      'Impactos por Mes',
+      'Latitud',
+      'Longitud'
+    ].join(',')
+
+    // Convert each media item to CSV row
+    const rows = mediaItems.map(item => [
+      item.claveOriginalSitio || '',
+      item.claveZirkel || '',
+      item.base || '',
+      item.altura || '',
+      item.ciudad || '',
+      item.estado || '',
+      item.tipoMedio || '',
+      item.costo || '',
+      item.costoInstalacion || '',
+      item.iluminacion || '',
+      item.vista || '',
+      item.orientacion || '',
+      item.caracteristica || '',
+      item.impactosMes || '',
+      item.latitud || '',
+      item.longitud || ''
+    ].join(','))
+
+    // Combine headers and rows
+    const csvContent = [headers, ...rows].join('\n')
+
+    navigator.clipboard.writeText(csvContent)
 
     toast({
       title: "Copiado al portapapeles",
-      description: `Se han copiado ${mediaItems.length} espacios de medios en formato JSON.`,
+      description: `Se han copiado ${mediaItems.length} espacios de medios en formato CSV.`,
     })
   }
 

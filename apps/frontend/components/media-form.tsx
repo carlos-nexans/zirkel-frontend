@@ -96,11 +96,43 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
 
   const copyToClipboard = () => {
     const formValues = form.getValues()
-    navigator.clipboard.writeText(JSON.stringify(formValues, null, 2))
+    
+    // Define CSV headers
+    const headers = [
+      'Clave Original', 'Clave ZIRKEL', 'Base', 'Altura', 'Ciudad', 'Estado',
+      'Tipo de Medio', 'Iluminación', 'Vista', 'Orientación', 'Característica',
+      'Impactos por Mes', 'Latitud', 'Longitud'
+    ]
+
+    // Get values in the same order as headers
+    const values = [
+      formValues.claveOriginalSitio,
+      formValues.claveZirkel,
+      formValues.base,
+      formValues.altura,
+      formValues.ciudad,
+      formValues.estado,
+      formValues.tipoMedio,
+      formValues.iluminacion,
+      formValues.vista,
+      formValues.orientacion,
+      formValues.caracteristica || '',
+      formValues.impactosMes || '',
+      formValues.latitud,
+      formValues.longitud
+    ]
+
+    // Create CSV string
+    const csvContent = [
+      headers.join(','),
+      values.join(',')
+    ].join('\n')
+
+    navigator.clipboard.writeText(csvContent)
 
     toast({
       title: "Copiado al portapapeles",
-      description: "Los datos han sido copiados en formato JSON.",
+      description: "Los datos han sido copiados en formato CSV.",
     })
   }
 
@@ -490,17 +522,6 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
               <Button type="button" variant="outline" onClick={copyToClipboard}>
                 <Copy className="mr-2 h-4 w-4" />
                 Copiar al portapapeles
-              </Button>
-
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? (
-                  <>Guardando...</>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-4 w-4" />
-                    Guardar
-                  </>
-                )}
               </Button>
             </CardFooter>
           </form>

@@ -43,9 +43,9 @@ export function MediaUploader({ onUpload, isLoading, currentImage, onRemove }: M
   if (currentImage) {
     return (
       <div className="relative">
-        <img src={currentImage} alt="Media preview" className="w-full min-h-[200px] object-cover rounded-md" />
+        <img src={currentImage} alt="Media preview" className="w-[600px] min-h-[200px] object-cover rounded-md" />
         {onRemove && (
-          <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2" onClick={onRemove}>
+          <Button type="button" variant="destructive" size="icon" className="absolute top-2 left-2" onClick={onRemove}>
             <X className="h-4 w-4" />
           </Button>
         )}

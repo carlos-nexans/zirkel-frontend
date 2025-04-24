@@ -5,7 +5,7 @@ import {
   createPartFromUri,
 } from "@google/genai";
 import { MediaDataExtraction } from './types';
-import { Proveedor } from '@repo/common/types'
+import { MediaData, Proveedor } from '@repo/common/types'
 import { google } from 'googleapis';
 import * as sharp from 'sharp';
 import { extractPrompt } from './prompts';
@@ -37,7 +37,7 @@ export class AppService {
     return pdfjsLib.getDocument({ data: uint8Array }).promise;
   }
 
-  private async getPageLargestImage(page: any): Promise<string | null> {
+  private async getPageLargestImageFromPDF(page: any): Promise<string | null> {
     try {
       const operatorList = await page.getOperatorList();
       let largestImage = null;
@@ -117,9 +117,6 @@ export class AppService {
         config: { mimeType },
       });
 
-      // Get the largest image from the page
-      const pdfDocument = await this.loadPDF(filePath);
-
       const result = await this.genAI.models.generateContent({
         model: "gemini-2.0-flash",
         config: {
@@ -134,10 +131,20 @@ export class AppService {
       this.logger.log(`Gemini API usage ${response.usageMetadata?.totalTokenCount}`)
       const extractedData = JSON.parse(response.text!) as MediaDataExtraction[];
 
+
+      let pdfDocument;
+      if (mimeType === 'application/pdf') {
+        pdfDocument = await this.loadPDF(filePath);
+      }
+
       // Add the largest image to each extracted item
       const extractedDataWithImages = extractedData.map(async (item) => {
-        const page = await pdfDocument.getPage(item.pagina);
-        const largestImage = await this.getPageLargestImage(page);
+        let largestImage: string | null = null;
+        if (mimeType === 'application/pdf') {
+          const page = await pdfDocument.getPage(item.pagina);
+          largestImage = await this.getPageLargestImageFromPDF(page);
+        }
+
         return {
           ...item,
           largestImage
@@ -215,6 +222,128 @@ export class AppService {
     } catch (error) {
       this.logger.error('Error fetching proveedores:', error);
       throw new Error(`Failed to fetch proveedores: ${error.message}`);
+    }
+  }
+
+  async updateMedias(mediaDataList: MediaData[]): Promise<void> {
+    try {
+      const credentials = Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS || '', 'base64').toString();
+      if (!credentials) {
+        throw new Error('GOOGLE_SHEETS_CREDENTIALS environment variable is not set');
+      }
+
+      const parsedCredentials = JSON.parse(credentials);
+      const auth = new google.auth.GoogleAuth({
+        credentials: parsedCredentials,
+        scopes: [
+          'https://www.googleapis.com/auth/spreadsheets'
+        ],
+      });
+
+      const sheets = google.sheets({ version: 'v4', auth });
+      const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+
+      // Primero obtenemos todos los datos actuales del spreadsheet
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'INVENTARIO!A:Z',
+        valueRenderOption: 'UNFORMATTED_VALUE',
+      });
+
+      const existingRows = response.data.values || [];
+      const headers = existingRows[0] || [];
+      
+      // Crear un mapa de índices de columnas
+      const columnMap = {
+        proveedor: headers.indexOf('PROVEEDOR'),
+        claveZirkel: headers.indexOf('CLAVE'),
+        claveOriginalSitio: headers.indexOf('CLAVE ORIGINAL'),
+        costo: headers.indexOf('COSTO'),
+        // costoInstalacion: headers.indexOf('COSTO DE INSTALACIÓN'),
+        tipoMedio: headers.indexOf('MEDIO'),
+        estado: headers.indexOf('ESTADO '),
+        ciudad: headers.indexOf('CIUDAD'),
+        base: headers.indexOf('BASE'),
+        altura: headers.indexOf('ALTURA'),
+        iluminacion: headers.indexOf('ILUMINACIÓN'),
+        vista: headers.indexOf('VISTA'),
+        orientacion: headers.indexOf('ORIENTACIÓN'),
+        caracteristica: headers.indexOf('CARACTERISTICAS'),
+        coordenadas: headers.indexOf('COORDENADAS'),
+      };
+
+      // Procesar cada medio
+      for (const mediaData of mediaDataList) {
+        // Crear el string de coordenadas combinando latitud y longitud
+        const coordenadas = mediaData.latitud && mediaData.longitud 
+          ? `${mediaData.latitud}, ${mediaData.longitud}`
+          : '';
+
+        // Buscar si el medio ya existe
+        const existingRowIndex = existingRows.findIndex(
+          (row) => row[columnMap.claveZirkel] === mediaData.claveZirkel
+        );
+
+        if (existingRowIndex > 0) {
+          // Actualizar medio existente
+          const existingRow = existingRows[existingRowIndex];
+          const updatedRow = [...existingRow];
+
+          // Actualizar solo los campos que vienen en mediaData
+          Object.entries(mediaData).forEach(([key, value]) => {
+            if (columnMap[key] !== undefined && value !== undefined) {
+              // Si no es latitud ni longitud, actualizar normalmente
+              if (key !== 'latitud' && key !== 'longitud') {
+                updatedRow[columnMap[key]] = value;
+              }
+            }
+          });
+
+          // Actualizar las coordenadas
+          if (coordenadas) {
+            updatedRow[columnMap.coordenadas] = coordenadas;
+          }
+
+          // Actualizar la fila en el spreadsheet
+          await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            range: `INVENTARIO!A${existingRowIndex + 1}:Z${existingRowIndex + 1}`,
+            valueInputOption: 'RAW',
+            requestBody: {
+              values: [updatedRow]
+            }
+          });
+        } else {
+          // Crear nuevo medio
+          const newRow = new Array(headers.length).fill('');
+          Object.entries(mediaData).forEach(([key, value]) => {
+            if (columnMap[key] !== undefined && key !== 'latitud' && key !== 'longitud') {
+              newRow[columnMap[key]] = value;
+            }
+          });
+
+          // Agregar las coordenadas combinadas
+          if (coordenadas) {
+            newRow[columnMap.coordenadas] = coordenadas;
+          }
+
+          // Agregar la nueva fila al final del spreadsheet
+          await sheets.spreadsheets.values.append({
+            spreadsheetId,
+            range: 'INVENTARIO!A:Z',
+            valueInputOption: 'RAW',
+            insertDataOption: 'INSERT_ROWS',
+            requestBody: {
+              values: [newRow]
+            }
+          });
+        }
+      }
+
+      this.logger.log(`Actualización de ${mediaDataList.length} medios completada`);
+    } catch (error) {
+      this.logger.error('Error actualizando medios:', error);
+      throw new Error(`Error actualizando medios: ${error.message}`);
     }
   }
 }
