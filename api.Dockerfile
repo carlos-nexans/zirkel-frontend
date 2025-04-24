@@ -1,6 +1,9 @@
 # ---- Build Stage ----
 FROM node:22 AS builder
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Set working directory for the monorepo root
 WORKDIR /app
 
@@ -14,7 +17,10 @@ RUN pnpm install --frozen-lockfile
 RUN cd /app && pnpm run build --filter=api
 
 # ---- Production Stage ----
-FROM node:22
+FROM node:22-alpine3.20
+
+# Install pnpm
+RUN npm install -g pnpm
 
 # Set working directory to api folder
 WORKDIR /app
