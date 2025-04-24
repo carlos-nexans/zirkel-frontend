@@ -76,7 +76,7 @@ export function MediaList({ mediaItems, onUpdate, onRemove }: MediaListProps) {
               {reviewedItems[item.id] && <Check className="h-5 w-5 text-green-500" />}
               <div>
                 <h3 className="font-medium">
-                  {item.proveedor || "Nuevo medio"} - {item.tipoMedio}
+                  {"Nuevo medio"} - {item.tipoMedio}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {item.claveOriginalSitio}, {item.estado}, {item.ciudad} - {item.claveZirkel}

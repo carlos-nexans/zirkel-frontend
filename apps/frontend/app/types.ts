@@ -20,4 +20,4 @@ export interface FilterValues {
   }
 }
 
-export type MediaFormData = Omit<MediaData, "proveedor">;
+export type MediaFormData = Omit<MediaData, "proveedor"> & {id: string};

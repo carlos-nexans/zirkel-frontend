@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import type { MediaFormData } from "@/app/types"
+import { Combobox } from "./combobox"
 
 interface MediaFormProps {
   initialData: MediaFormData
@@ -28,7 +29,6 @@ const formSchema = z.object({
   claveZirkel: z.string().min(1, { message: "La clave ZIRKEL es requerida" }),
   base: z.coerce.number().min(0, { message: "La base debe ser mayor a 0" }),
   altura: z.coerce.number().min(0, { message: "La altura debe ser mayor a 0" }),
-  coordenadas: z.string().min(1, { message: "Las coordenadas son requeridas" }),
   ciudad: z.string().min(1, { message: "La ciudad es requerida" }),
   estado: z.string().min(1, { message: "El estado es requerido" }),
   tipoMedio: z.string().min(1, { message: "El tipo de medio es requerido" }),
@@ -224,19 +224,35 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
               </div>
 
               {/* 6. Coordenadas */}
-              <FormField
-                control={form.control}
-                name="coordenadas"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Coordenadas</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="latitud"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Latitud</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.000001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="longitud" 
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Longitud</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.000001" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* 7-8. Ciudad y Estado */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -269,74 +285,6 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 />
               </div>
 
-              {/* 9. Tipo de medio */}
-              <FormField
-                control={form.control}
-                name="tipoMedio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Medio *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Aeropuertos">Aeropuertos</SelectItem>
-                        <SelectItem value="Bajopuentes">Bajopuentes</SelectItem>
-                        <SelectItem value="Carteleras">Carteleras</SelectItem>
-                        <SelectItem value="Gimnasios">Gimnasios</SelectItem>
-                        <SelectItem value="Institutos Educativos">Institutos Educativos</SelectItem>
-                        <SelectItem value="Mupi">Mupi</SelectItem>
-                        <SelectItem value="Mupi Urbano">Mupi Urbano</SelectItem>
-                        <SelectItem value="Mupis Digitales">Mupis Digitales</SelectItem>
-                        <SelectItem value="Muros">Muros</SelectItem>
-                        <SelectItem value="Pantallas Digitales">Pantallas Digitales</SelectItem>
-                        <SelectItem value="Puente Digital">Puente Digital</SelectItem>
-                        <SelectItem value="Puentes">Puentes</SelectItem>
-                        <SelectItem value="Sitios de Taxis">Sitios de Taxis</SelectItem>
-                        <SelectItem value="Suburbano">Suburbano</SelectItem>
-                        <SelectItem value="Totem Digital">Totem Digital</SelectItem>
-                        <SelectItem value="Valla Fija">Valla Fija</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* 10-11. Costo de espacio y Costo de instalacion */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="costo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Costo del Espacio *</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="costoInstalacion"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Costo de Instalación</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               {/* 12. Iluminacion */}
               <FormField
                 control={form.control}
@@ -344,18 +292,17 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Iluminación</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar tipo" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="LED">LED</SelectItem>
-                        <SelectItem value="Fluorescente">Fluorescente</SelectItem>
-                        <SelectItem value="Sin iluminación">Sin iluminación</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          'Si',
+                          'Pantalla',
+                          'No',
+                          'Backlight'
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -368,18 +315,20 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Vista</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar vista" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Frontal">Frontal</SelectItem>
-                        <SelectItem value="Lateral">Lateral</SelectItem>
-                        <SelectItem value="Posterior">Posterior</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          'Natural',
+                          'Única',
+                          'Cruzada',
+                          'Lateral',
+                          'Frontal',
+                          'Central',
+                          'N/A'
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -392,19 +341,65 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Orientación</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccionar orientación" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Norte">Norte</SelectItem>
-                        <SelectItem value="Sur">Sur</SelectItem>
-                        <SelectItem value="Este">Este</SelectItem>
-                        <SelectItem value="Oeste">Oeste</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          'Norte',
+                          'Sur-Norte',
+                          'Sur',
+                          'Norte-Sur',
+                          'Oriente',
+                          'Norte Sur',
+                          'Poniente',
+                          'Oeste',
+                          'Este',
+                          'Sur Norte'
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 9. Tipo de medio */}
+              <FormField
+                control={form.control}
+                name="tipoMedio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Medio *</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          'Aeropuertos',
+                          'Bajopuentes',
+                          'Bicivallas',
+                          'Camiones',
+                          'Carteleras',
+                          'Centros Comerciales',
+                          'Gimnasios',
+                          'Impresión de lonas',
+                          'Institutos Educativos',
+                          'Mupi Urbano',
+                          'Mupis Digitales',
+                          'Muros',
+                          'Otros Medios',
+                          'Pantallas Digitales',
+                          'Publiandantes',
+                          'Puente Digital',
+                          'Puentes',
+                          'Sitios de Taxis',
+                          'Stand Metro',
+                          'Suburbano',
+                          'Totem Digital',
+                          'Valla Fija',
+                          'Vallas Móviles'
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -418,7 +413,31 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                   <FormItem>
                     <FormLabel>Característica</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Combobox
+                        options={[
+                          'Valla / Mampara',
+                          'Videowall',
+                          'Totem',
+                          'Unipolar',
+                          'Estructura',
+                          'Azotea',
+                          'Cartelera',
+                          'Varios formatos',
+                          'Kinder',
+                          'Preparatoria',
+                          'Primaria',
+                          'Secundaria',
+                          'Universidad',
+                          'Mupi',
+                          'Mupi Digital',
+                          'Muro',
+                          'Pantalla',
+                          'Puente',
+                          'Valla',
+                          'Ultra Valla'
+                        ]}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

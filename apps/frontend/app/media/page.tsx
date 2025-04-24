@@ -9,76 +9,82 @@ import { Copy, FileText, Plus, Save } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { MediaFormData } from "@/app/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Caracteristica, Orientacion, Proveedor, TipoMedio, Vista } from "@repo/common/types"
+import { useProveedores } from "@/hooks/use-proveedores"
+
+export type MediaDataExtraction = {
+  // Clave única del medio
+  clave?: string
+  base: number
+  altura: number
+  ciudad: string
+  estado: string
+  tipoMedio: TipoMedio
+  costo: number
+  costoInstalacion?: number
+  iluminacion: "Si" | "No"
+  vista: Vista
+  orientacion: Orientacion
+  caracteristica?: Caracteristica
+  impactosMes?: number
+  latitud: number
+  longitud: number
+  pagina: number
+  // Base64 string of the largest image
+  largestImage?: string
+}
 
 export default function MediaPage() {
   const [mediaItems, setMediaItems] = useState<MediaFormData[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [provider, setProvider] = useState<Proveedor | null>(null);
   const { toast } = useToast()
 
-
-  const handleFileUpload = async (file: File, provider: string) => {
+  const handleFileUpload = async (file: File) => {
     setIsLoading(true)
 
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+      const url = `${baseUrl}/extract`;
+      
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // Mock API call to jsonplaceholder
-      const response = await fetch("https://jsonplaceholder.typicode.com/posts/1")
-      const data = await response.json()
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
 
-      // Mock multiple media data items based on the API response
-      const mockMediaItems: MediaFormData[] = [
-        {
-          id: "media-1",
-          // proveedor: provider,
-          claveOriginalSitio: "MC-001",
-          costo: 15000,
-          costoInstalacion: 5000,
-          tipoMedio: "Espectacular",
-          estado: "CDMX",
-          ciudad: "Ciudad de México",
-          claveZirkel: "ZK-" + Math.floor(Math.random() * 10000),
-          coordenadas: "19.4326,-99.1332",
-          base: 12.5,
-          altura: 7.2,
-          iluminacion: "LED",
-          vista: "Frontal",
-          orientacion: "Norte",
-          caracteristica: "Alta visibilidad",
-          impactosMes: 150000,
-          imageUrl: "/placeholder.svg?height=200&width=300&text=Media+1",
-          latitud: 19.4326,
-          longitud: -99.1332,
-        },
-        {
-          id: "media-2",
-          // proveedor: provider,
-          claveOriginalSitio: "PM-002",
-          costo: 12000,
-          costoInstalacion: 3500,
-          tipoMedio: "Mural",
-          estado: "Jalisco",
-          ciudad: "Guadalajara",
-          claveZirkel: "ZK-" + Math.floor(Math.random() * 10000),
-          coordenadas: "20.6597,-103.3496",
-          base: 10.0,
-          altura: 6.0,
-          iluminacion: "Fluorescente",
-          vista: "Lateral",
-          orientacion: "Sur",
-          caracteristica: "Zona comercial",
-          impactosMes: 120000,
-          imageUrl: "/placeholder.svg?height=200&width=300&text=Media+2",
-          latitud: 20.6597,
-          longitud: -103.3496,
-        },
-      ]
+      if (!response.ok) {
+        throw new Error('Error al procesar el archivo');
+      }
 
-      setMediaItems(mockMediaItems)
+      const mediaItems: MediaDataExtraction[] = await response.json();
+
+      const transformedItems: MediaFormData[] = mediaItems.map((item, index) => ({
+        id: Math.random().toString(36).toString(),
+        claveZirkel: `ZM${provider!.clave}${item.clave}`,
+        claveOriginalSitio: item.clave || '',
+        costo: item.costo,
+        costoInstalacion: item.costoInstalacion,
+        tipoMedio: item.tipoMedio,
+        estado: item.estado,
+        ciudad: item.ciudad,
+        base: item.base,
+        altura: item.altura,
+        iluminacion: item.iluminacion,
+        vista: item.vista,
+        orientacion: item.orientacion,
+        caracteristica: item.caracteristica,
+        impactosMes: item.impactosMes,
+        imageUrl: item.largestImage,
+        latitud: item.latitud,
+        longitud: item.longitud,
+      }));
+      setMediaItems(transformedItems)
       toast({
         title: "Archivo procesado",
-        description: `Se encontraron ${mockMediaItems.length} medios en el archivo.`,
+        description: `Se encontraron ${transformedItems.length} medios en el archivo.`,
       })
     } catch (error) {
       toast({
@@ -92,9 +98,8 @@ export default function MediaPage() {
   }
 
   const addNewMedia = () => {
-    const newId = `media-${mediaItems.length + 1}-${Date.now()}`
     const newMedia: MediaFormData = {
-      id: newId,
+      id: Math.random().toString(36).toString(),
       // proveedor: "",
       claveOriginalSitio: "",
       costo: 0,
@@ -102,7 +107,6 @@ export default function MediaPage() {
       estado: "",
       ciudad: "",
       claveZirkel: "",
-      coordenadas: "",
       base: 0,
       altura: 0,
       iluminacion: "",
@@ -217,6 +221,8 @@ export default function MediaPage() {
             <h2 className="text-xl font-semibold mb-4">Subir archivo</h2>
             <FileUploader
               onUpload={handleFileUpload}
+              provider={provider}
+              setProvider={setProvider}
               isLoading={isLoading}
               title="Subir archivo"
               description="Arrastra y suelta un archivo o haz clic para seleccionar"

@@ -1,23 +1,28 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Upload, FileUp, Paperclip, Sparkles } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
+import { Proveedor } from "@repo/common/types"
+import { useProveedores } from "@/hooks/use-proveedores"
 
 interface FileUploaderProps {
-  onUpload: (file: File, provider: string) => void
+  onUpload: (file: File) => void
   isLoading: boolean
   accept?: string
   currentImage?: string
   title?: string
   description?: string
   supportedFormats?: string
+  provider: Proveedor | null
+  setProvider: (provider: Proveedor) => void
 }
 
 export function FileUploader({
@@ -28,19 +33,31 @@ export function FileUploader({
   title,
   description,
   supportedFormats,
+  provider,
+  setProvider,
 }: FileUploaderProps) {
   const [file, setFile] = useState<File | null>(null)
   const [dragActive, setDragActive] = useState(false)
-  const [provider, setProvider] = useState<string>("")
 
-  // Mock providers data
-  const providers = [
-    { id: 1, name: "MediaCorp" },
-    { id: 2, name: "PubliMax" },
-    { id: 3, name: "VisualAds" },
-    { id: 4, name: "OutdoorMedia" },
-    { id: 5, name: "CityAds" },
-  ]
+  const {providers = [], isLoadingProviders, error } = useProveedores();
+
+  const onProviderChange = (value: string) => {
+    const selectedProvider = providers.find((p: Proveedor) => p.clave === value)
+    setProvider(selectedProvider!)
+  }
+
+  const { toast } = useToast()
+
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Ocurrió un error al cargar los proveedores",
+        variant: "default"
+      })
+      console.error("Error fetching providers:", error)
+    }
+  }, [error])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -75,7 +92,7 @@ export function FileUploader({
     e.preventDefault()
 
     if (file && provider) {
-      onUpload(file, provider)
+      onUpload(file)
     }
   }
 
@@ -86,14 +103,14 @@ export function FileUploader({
           {/* Provider selection */}
           <div className="mb-4">
             <Label htmlFor="provider">Proveedor *</Label>
-            <Select onValueChange={setProvider} value={provider}>
+            <Select onValueChange={onProviderChange} value={provider?.clave}>
               <SelectTrigger id="provider">
-                <SelectValue placeholder="Seleccionar proveedor" />
+                <SelectValue placeholder={isLoadingProviders ? "Cargando proveedores..." : "Seleccionar proveedor"} />
               </SelectTrigger>
               <SelectContent>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.name}>
-                    {p.name}
+                {providers.map((p: Proveedor) => (
+                  <SelectItem key={p.clave} value={p.clave}>
+                    <p>{p.proveedor} <span className="text-gray-300">{p.clave}</span></p>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -159,12 +176,16 @@ export function FileUploader({
 
           {isLoading && (
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Procesando archivo...</span>
-                <span>Por favor espere</span>
-              </div>
-              <Progress value={45} className="h-2" />
+            <div className="flex justify-between text-sm">
+              <span>Procesando archivo...</span>
+              <span>Por favor espere</span>
             </div>
+            <div className='w-full'>
+              <div className='h-1.5 w-full bg-gray-100 overflow-hidden'>
+                <div className='progress w-full h-full bg-gray-500 left-right'></div>
+              </div>
+            </div>
+          </div>
           )}
         </form>
       </CardContent>
