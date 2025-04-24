@@ -83,13 +83,13 @@ export class AppController {
         ? JSON.parse(body.mediaDataList)
         : body.mediaDataList;
 
-      console.log('Datos de medios recibidos:', mediaDataList);
+      // console.log('Datos de medios recibidos:', mediaDataList);
       
       // Procesar los datos de los medios
       await this.appService.updateMedias(mediaDataList);
 
       // TODO: Procesar los archivos si es necesario
-      console.log('Archivos recibidos:', files);
+      // console.log('Archivos recibidos:', files);
 
       return { message: 'Datos de medios actualizados correctamente' };
     } catch (error) {
