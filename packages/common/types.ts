@@ -21,7 +21,7 @@ export interface MediaData {
     longitud: number
 }
 
-type TipoMedio = 
+export type TipoMedio = 
     | 'Aeropuertos'
     | 'Bajopuentes'
     | 'Bicivallas'
@@ -46,7 +46,7 @@ type TipoMedio =
     | 'Valla Fija'
     | 'Vallas Móviles';
 
-type Vista = 
+export type Vista = 
     | 'Natural'
     | 'Única'
     | 'Cruzada'
@@ -56,7 +56,7 @@ type Vista =
     | 'N/A'
     | string;
 
-type Orientacion =
+export type Orientacion =
     | 'Norte'
     | 'Sur-Norte'
     | 'Sur'
@@ -69,7 +69,7 @@ type Orientacion =
     | 'Sur Norte'
     | string;
 
-type Caracteristica =
+export type Caracteristica =
 |'Valla / Mampara'
 |'Videowall'
 |'Totem'
@@ -93,3 +93,34 @@ type Caracteristica =
 |'Valla'
 |'Ultra Valla'
 | string
+
+
+export interface Proveedor {
+    clave: string;
+    proveedor: string;
+    razonSocial: string;
+    negociacion: string;
+    cobertura: string;
+    carteleras: boolean;
+    pantallas: boolean;
+    puentes: boolean;
+    muros: boolean;
+    sitiosTaxis: boolean;
+    vallasFijas: boolean;
+    aeropuertos: boolean;
+    vallasMoviles: boolean;
+    gimnasios: boolean;
+    suburbano: boolean;
+    metro: boolean;
+    mupisDigitales: boolean;
+    centrosComerciales: boolean;
+    totemDigital: boolean;
+    autobuses: boolean;
+    universidades: boolean;
+    otrosAlternativos: boolean;
+    impresion: boolean;
+    contacto: string;
+    telefono: string;
+    email: string;
+    restricciones: string;
+  }
