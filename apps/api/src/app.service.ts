@@ -21,7 +21,7 @@ export class AppService {
     this.genAI = new GoogleGenAI({ apiKey: process.env?.GEMINI_API_KEY! });
     this.loadPDFJS();
   }
-
+  
   private async loadPDFJS() {
     if (!this.pdfjs) {
       const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");

@@ -7,7 +7,7 @@ app = 'zirkel-api'
 primary_region = 'gdl'
 
 [build]
-  dockerfile = 'api.Dockerfile'
+  dockerfile = 'Dockerfile'
 
 [env]
   NODE_ENV = 'production'
