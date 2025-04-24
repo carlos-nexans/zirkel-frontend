@@ -1,15 +1,26 @@
-import { BadRequestException, Controller, Get, InternalServerErrorException, Logger, Post, UploadedFile, UseInterceptors, Body, UploadedFiles } from '@nestjs/common';
+import { BadRequestException, Controller, Get, InternalServerErrorException, Logger, Post, UploadedFile, UseInterceptors, Body, UploadedFiles, Inject } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { Cache } from 'cache-manager';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { AppService } from './app.service';
 import { MediaData, Proveedor } from '@repo/common/types';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 @Controller()
 export class AppController {
   private readonly logger = new Logger();
-  constructor(private readonly appService: AppService) {}
+
+  constructor(
+    private readonly appService: AppService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache
+  ) {}
+
+  private generateFileHash(buffer: Buffer): string {
+    return crypto.createHash('md5').update(buffer).digest('hex');
+  }
 
   @Get()
   health(): string {
@@ -23,6 +34,16 @@ export class AppController {
       throw new BadRequestException('No file uploaded');
     }
 
+    // Generate hash from file buffer
+    const fileHash = this.generateFileHash(file.buffer);
+
+    // Try to get from cache
+    const cachedResult = await this.cacheManager.get(fileHash);
+    if (cachedResult) {
+      this.logger.log(`Cache hit for file hash: ${fileHash}`);
+      return cachedResult;
+    }
+
     const tempDir = os.tmpdir();
     const tempFilePath = path.join(tempDir, file.originalname);
 
@@ -32,6 +53,9 @@ export class AppController {
 
       // Process the file using Gemini
       const result = await this.appService.processFile(tempFilePath, file.mimetype);
+
+      // Store in cache with TTL of 10 minutes (600 seconds)
+      await this.cacheManager.set(fileHash, result, 600000);
 
       return result;
     } catch (error) {
