@@ -15,6 +15,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  // Update the listen call to bind to all network interfaces
+  await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 bootstrap();
