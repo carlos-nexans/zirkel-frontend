@@ -11,6 +11,9 @@ import type { MediaFormData } from "@/app/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Caracteristica, MediaData, Orientacion, Proveedor, TipoMedio, Vista } from "@repo/common/types"
 import { useProveedores } from "@/hooks/use-proveedores"
+import { FormLabel } from "@/components/ui/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 
 export type MediaDataExtraction = {
   // Clave única del medio
@@ -39,6 +42,7 @@ export default function MediaPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [provider, setProvider] = useState<Proveedor | null>(null);
   const { toast } = useToast()
+  const { providers = [], isLoadingProviders } = useProveedores();
 
   const handleFileUpload = async (file: File) => {
     setIsLoading(true)
@@ -299,12 +303,33 @@ export default function MediaPage() {
             <h2 className="text-xl font-semibold mb-4">Agregar manualmente</h2>
             <Card className="w-full">
               <CardContent className="pt-6">
+                <div className="mb-4">
+                  <Label htmlFor="provider">Proveedor *</Label>
+                  <Select onValueChange={(value) => {
+                    const selectedProvider = providers.find((p: Proveedor) => p.clave === value)
+                    setProvider(selectedProvider!)
+                  }} value={provider?.clave}>
+                    <SelectTrigger id="provider">
+                      <SelectValue placeholder={isLoadingProviders ? "Cargando proveedores..." : "Seleccionar proveedor"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {providers.map((p: Proveedor) => (
+                        <SelectItem key={p.clave} value={p.clave}>
+                          <p>{p.proveedor} <span className="text-gray-300">{p.clave}</span></p>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    El proveedor seleccionado se aplicará a todos los medios creados manualmente
+                  </p>
+                </div>
                 <div className="text-center p-6">
                   <h3 className="text-lg font-semibold mb-2">Crear nuevo medio</h3>
                   <p className="text-sm text-muted-foreground mb-4">
                     Agrega medios manualmente sin necesidad de subir un archivo
                   </p>
-                  <Button onClick={addNewMedia} size="sm" variant="outline">
+                  <Button onClick={addNewMedia} size="sm" variant="outline" disabled={!provider}>
                     <Plus className="mr-2 h-4 w-4" />
                     Agregar medio manualmente
                   </Button>
