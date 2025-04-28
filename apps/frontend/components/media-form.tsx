@@ -194,35 +194,36 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 )}
               />
 
-              {/* 2. Clave original */}
-              <FormField
-                control={form.control}
-                name="claveOriginalSitio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Clave Original del Sitio *</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* 2-3. Clave original y Clave zirkel */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="claveOriginalSitio"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Clave Original del Sitio *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {/* 3. Clave zirkel */}
-              <FormField
-                control={form.control}
-                name="claveZirkel"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Clave ZIRKEL *</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="claveZirkel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Clave ZIRKEL *</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* 4-5. Base y Altura */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -317,6 +318,79 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                 />
               </div>
 
+              {/* 9. Tipo de medio */}
+              <FormField
+                control={form.control}
+                name="tipoMedio"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de Medio *</FormLabel>
+                    <FormControl>
+                      <Combobox
+                        options={[
+                          'Aeropuertos',
+                          'Bajopuentes',
+                          'Bicivallas',
+                          'Camiones',
+                          'Carteleras',
+                          'Centros Comerciales',
+                          'Gimnasios',
+                          'Impresión de lonas',
+                          'Institutos Educativos',
+                          'Mupi Urbano',
+                          'Mupis Digitales',
+                          'Muros',
+                          'Otros Medios',
+                          'Pantallas Digitales',
+                          'Publiandantes',
+                          'Puente Digital',
+                          'Puentes',
+                          'Sitios de Taxis',
+                          'Stand Metro',
+                          'Suburbano',
+                          'Totem Digital',
+                          'Valla Fija',
+                          'Vallas Móviles'
+                        ]}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* 10-11. Costo y Costo de Instalación */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="costo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo *</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="costoInstalacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Costo de Instalación</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               {/* 12. Iluminacion */}
               <FormField
                 control={form.control}
@@ -386,48 +460,6 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                           'Oeste',
                           'Este',
                           'Sur Norte'
-                        ]}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* 9. Tipo de medio */}
-              <FormField
-                control={form.control}
-                name="tipoMedio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tipo de Medio *</FormLabel>
-                    <FormControl>
-                      <Combobox
-                        options={[
-                          'Aeropuertos',
-                          'Bajopuentes',
-                          'Bicivallas',
-                          'Camiones',
-                          'Carteleras',
-                          'Centros Comerciales',
-                          'Gimnasios',
-                          'Impresión de lonas',
-                          'Institutos Educativos',
-                          'Mupi Urbano',
-                          'Mupis Digitales',
-                          'Muros',
-                          'Otros Medios',
-                          'Pantallas Digitales',
-                          'Publiandantes',
-                          'Puente Digital',
-                          'Puentes',
-                          'Sitios de Taxis',
-                          'Stand Metro',
-                          'Suburbano',
-                          'Totem Digital',
-                          'Valla Fija',
-                          'Vallas Móviles'
                         ]}
                         {...field}
                       />

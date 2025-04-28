@@ -27,7 +27,7 @@ interface ComboboxProps {
   placeholder?: string
 }
 
-export function Combobox({ options, value, onChange, placeholder = "Select..." }: ComboboxProps) {
+export function Combobox({ options, value, onChange, placeholder = "Escribe y selecciona..." }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
   const [inputValue, setInputValue] = React.useState(value || "")
 

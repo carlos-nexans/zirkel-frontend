@@ -12,7 +12,8 @@ export const useProveedores = () => {
                 throw new Error("Network response was not ok")
             }
             return response.json()
-        }
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutos en milisegundos
     })
 
     return {

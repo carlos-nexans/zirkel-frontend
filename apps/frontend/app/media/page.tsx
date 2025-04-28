@@ -274,11 +274,11 @@ export default function MediaPage() {
 
       <Tabs defaultValue="file">
         <TabsList>
-          <TabsTrigger value="file">
+          <TabsTrigger value="file" disabled={isLoadingProviders}>
             <FileText className="mr-2 h-4 w-4" />
             Subir archivo
           </TabsTrigger>
-          <TabsTrigger value="manual">
+          <TabsTrigger value="manual" disabled={isLoadingProviders}>
             <Plus className="mr-2 h-4 w-4" />
             Agregar manualmente
           </TabsTrigger>
