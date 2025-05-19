@@ -34,6 +34,7 @@ export function BreadcrumbNav() {
         if (path === "media") label = "Gestión de espacios"
         if (path === "proposal") label = "Propuestas"
         if (path === "settings") label = "Configuración"
+        if (path === "hot-proposals") label = "Propuesta rápida"
 
         return {
           label,

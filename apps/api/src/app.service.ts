@@ -247,6 +247,116 @@ export class AppService {
     }
   }
 
+  async getMediasByKeys(zirkelKeys: string[]): Promise<MediaData[]> {
+    try {
+      const credentials = Buffer.from(
+        process.env.GOOGLE_SHEETS_CREDENTIALS || '',
+        'base64',
+      ).toString();
+      if (!credentials) {
+        throw new Error(
+          'GOOGLE_SHEETS_CREDENTIALS environment variable is not set',
+        );
+      }
+
+      const parsedCredentials = JSON.parse(credentials);
+      const auth = new google.auth.GoogleAuth({
+        credentials: parsedCredentials,
+        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+      });
+
+      const sheets = google.sheets({ version: 'v4', auth });
+      const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+
+      // Get all data from the INVENTARIO sheet
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: 'INVENTARIO!A:Z',
+        valueRenderOption: 'UNFORMATTED_VALUE',
+      });
+
+      const rows = response.data.values || [];
+      const headers = rows[0] || [];
+
+      // Create a map of column indices
+      const columnMap = {
+        proveedor: headers.indexOf('PROVEEDOR'),
+        claveZirkel: headers.indexOf('CLAVE'),
+        claveOriginalSitio: headers.indexOf('CLAVE ORIGINAL'),
+        costo: headers.indexOf('COSTO'),
+        costoInstalacion: headers.indexOf('COSTO DE INSTALACIÓN'),
+        tipoMedio: headers.indexOf('MEDIO'),
+        estado: headers.indexOf('ESTADO '),
+        ciudad: headers.indexOf('CIUDAD'),
+        base: headers.indexOf('BASE'),
+        altura: headers.indexOf('ALTURA'),
+        iluminacion: headers.indexOf('ILUMINACIÓN'),
+        vista: headers.indexOf('VISTA'),
+        orientacion: headers.indexOf('ORIENTACIÓN'),
+        caracteristica: headers.indexOf('CARACTERISTICAS'),
+        coordenadas: headers.indexOf('COORDENADAS'),
+        direccion: headers.indexOf('DIRECCIÓN'),
+        delegacion: headers.indexOf('DELEGACIÓN / MUNICIPIO'),
+        colonia: headers.indexOf('COLONIA'),
+        codigoPostal: headers.indexOf('CÓDIGO POSTAL'),
+      };
+
+      // Filter rows by Zirkel keys
+      const filteredRows = rows.slice(1).filter(row => {
+        const claveZirkel = row[columnMap.claveZirkel];
+        return zirkelKeys.includes(claveZirkel);
+      });
+
+      // Map filtered rows to MediaData objects
+      const mediaDataList: MediaData[] = filteredRows.map(row => {
+        // Extract coordinates if available
+        let latitud = 0;
+        let longitud = 0;
+        const coordenadas = row[columnMap.coordenadas];
+        if (coordenadas && typeof coordenadas === 'string') {
+          const [lat, lng] = coordenadas.split(',').map(c => parseFloat(c.trim()));
+          if (!isNaN(lat) && !isNaN(lng)) {
+            latitud = lat;
+            longitud = lng;
+          }
+        }
+
+        // Create MediaData object
+        const mediaData: MediaData = {
+          proveedor: row[columnMap.proveedor] || '',
+          claveZirkel: row[columnMap.claveZirkel] || '',
+          claveOriginalSitio: row[columnMap.claveOriginalSitio] || '',
+          costo: row[columnMap.costo] || 0,
+          costoInstalacion: row[columnMap.costoInstalacion] || 0,
+          tipoMedio: row[columnMap.tipoMedio] || '',
+          estado: row[columnMap.estado] || '',
+          ciudad: row[columnMap.ciudad] || '',
+          base: row[columnMap.base] || 0,
+          altura: row[columnMap.altura] || 0,
+          iluminacion: row[columnMap.iluminacion] || '',
+          vista: row[columnMap.vista] || '',
+          orientacion: row[columnMap.orientacion] || '',
+          caracteristica: row[columnMap.caracteristica] || '',
+          direccion: row[columnMap.direccion] || '',
+          delegacion: row[columnMap.delegacion] || '',
+          colonia: row[columnMap.colonia] || '',
+          codigoPostal: row[columnMap.codigoPostal] || '',
+          latitud,
+          longitud,
+          imageUrl: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/media/${row[columnMap.claveZirkel]}.jpeg`,
+        };
+
+        return mediaData;
+      });
+
+      this.logger.log(`Found ${mediaDataList.length} media items for ${zirkelKeys.length} Zirkel keys`);
+      return mediaDataList;
+    } catch (error) {
+      this.logger.error('Error fetching media by keys:', error);
+      throw new Error(`Failed to fetch media by keys: ${error.message}`);
+    }
+  }
+
   async updateMedias(mediaDataList: MediaData[]): Promise<void> {
     try {
       const credentials = Buffer.from(

@@ -205,17 +205,21 @@ export default function MediaPage() {
 
       await response.json()
 
-      // Store all clave zirkel values and timestamps in localStorage
-      const existingData = localStorage.getItem('zirkelKeys') ? 
-        JSON.parse(localStorage.getItem('zirkelKeys')!) : [];
+      // Store media items with provider and timestamp in localStorage
+      const existingData = localStorage.getItem('mediaProposals') ? 
+        JSON.parse(localStorage.getItem('mediaProposals')!) : [];
       
       const timestamp = new Date().toISOString();
-      const newZirkelKeys = mediaItems.map(item => ({
-        claveZirkel: item.claveZirkel,
-        timestamp: timestamp
-      }));
+      const newProposal = {
+        proveedor: provider!.proveedor,
+        date: timestamp,
+        mediaItems: mediaItems.map(item => ({
+          claveZirkel: item.claveZirkel,
+          proveedor: provider!.proveedor
+        }))
+      };
 
-      localStorage.setItem('zirkelKeys', JSON.stringify([...existingData, ...newZirkelKeys]));
+      localStorage.setItem('mediaProposals', JSON.stringify([...existingData, newProposal]));
 
       toast({
         title: "Datos guardados",

@@ -89,6 +89,17 @@ export class AppController {
     return this.appService.getProveedores();
   }
 
+  @Post('get-medios-by-keys')
+  async getMediasByKeys(@Body() body: { zirkelKeys: string[] }) {
+    try {
+      const result = await this.appService.getMediasByKeys(body.zirkelKeys);
+      return result;
+    } catch (error) {
+      this.logger.error('Error al obtener medios por claves:', error);
+      throw new InternalServerErrorException('Error al obtener medios por claves');
+    }
+  }
+
   @Post('medios')
   @UseInterceptors(FilesInterceptor('files'))
   async updateMedias(
