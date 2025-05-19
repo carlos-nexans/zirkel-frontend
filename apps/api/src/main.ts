@@ -7,7 +7,7 @@ config();
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
   // Enable CORS
   app.enableCors({
     origin: true, // You can replace this with specific origins like 'http://localhost:3001'
