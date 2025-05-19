@@ -33,6 +33,10 @@ export type MediaDataExtraction = {
   latitud: number
   longitud: number
   pagina: number
+  direccion: string;
+  delegacion: string;
+  colonia: string;
+  codigoPostal: string;
   // Base64 string of the largest image
   largestImage?: string
 }
@@ -85,6 +89,10 @@ export default function MediaPage() {
         imageUrl: item.largestImage,
         latitud: item.latitud,
         longitud: item.longitud,
+        direccion: item.direccion,
+        delegacion: item.delegacion,
+        colonia: item.colonia,
+        codigoPostal: item.codigoPostal,
       }));
       setMediaItems(transformedItems)
       toast({

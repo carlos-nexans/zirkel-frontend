@@ -39,7 +39,7 @@ export class AppController {
 
     // Try to get from cache
     const cachedResult = await this.cacheManager.get(fileHash);
-    if (cachedResult) {
+    if (cachedResult && process.env.CACHE_ENABLED === 'true') {
       this.logger.log(`Cache hit for file hash: ${fileHash}`);
       return cachedResult;
     }

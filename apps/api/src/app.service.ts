@@ -84,7 +84,7 @@ export class AppService {
               }
             }
           } catch (err) {
-            console.warn(`Skipping image ${args[0]}: ${err.message}`);
+            // console.warn(`Skipping image ${args[0]}: ${err.message}`);
             continue;
           }
         }
@@ -133,6 +133,7 @@ export class AppService {
 
       const result = await this.genAI.models.generateContent({
         model: 'gemini-2.0-flash',
+        // model: 'gemini-2.5-pro-preview-05-06',
         config: {
           responseMimeType: 'application/json',
         },
@@ -283,7 +284,7 @@ export class AppService {
         claveZirkel: headers.indexOf('CLAVE'),
         claveOriginalSitio: headers.indexOf('CLAVE ORIGINAL'),
         costo: headers.indexOf('COSTO'),
-        // costoInstalacion: headers.indexOf('COSTO DE INSTALACIÓN'),
+        costoInstalacion: headers.indexOf('COSTO DE INSTALACIÓN'),
         tipoMedio: headers.indexOf('MEDIO'),
         estado: headers.indexOf('ESTADO '),
         ciudad: headers.indexOf('CIUDAD'),
@@ -294,6 +295,10 @@ export class AppService {
         orientacion: headers.indexOf('ORIENTACIÓN'),
         caracteristica: headers.indexOf('CARACTERISTICAS'),
         coordenadas: headers.indexOf('COORDENADAS'),
+        direccion: headers.indexOf('DIRECCIÓN'),
+        delegacion: headers.indexOf('DELEGACIÓN / MUNICIPIO'),
+        colonia: headers.indexOf('COLONIA'),
+        codigoPostal: headers.indexOf('CÓDIGO POSTAL'),
       };
 
       // Procesar cada medio

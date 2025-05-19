@@ -92,11 +92,19 @@ type MediaData = {
     vista: Vista
     orientacion: Orientacion
     caracteristica?: Caracteristica
+    // Si es posible, infiere o extrae los impactos. Si es necesario, suma los impactos en un solo número.
     impactosMes?: number
     latitud: number
     longitud: number
     pagina: number
+    direccion: string
+    // Si es posible, infiere o extrae la delegación/municipio de la dirección. Generalmente viene después de la colonia.
+    delegacion: string
+    // Si es posible, infiere o extrae la colonia de la dirección. Generalmente viene precedido como Col.
+    colonia: string
+    // Si es posible, infiere o extrae el código postal de la dirección. Generalmente viene precedido como CP o C.P.
+    codigoPostal: string
 }
 
 Escribe el resultado en formato JSON siguiendo el esquema.
-`
+`;

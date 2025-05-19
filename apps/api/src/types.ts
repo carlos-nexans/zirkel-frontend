@@ -20,4 +20,8 @@ export type MediaDataExtraction = {
     pagina: number
     // Base64 string of the largest image
     largestImage?: string
+    direccion: string;
+    delegacion: string;
+    colonia: string;
+    codigoPostal: string;
 }

@@ -19,6 +19,10 @@ export interface MediaData {
     imageUrl?: string
     latitud: number
     longitud: number
+    direccion: string
+    delegacion: string
+    colonia: string
+    codigoPostal: string
 }
 
 export type Iliminacion = 

@@ -45,6 +45,10 @@ const formSchema = z.object({
   imageUrl: z.string().optional(),
   latitud: z.coerce.number().min(-90).max(90, { message: "La latitud debe estar entre -90 y 90" }),
   longitud: z.coerce.number().min(-180).max(180, { message: "La longitud debe estar entre -180 y 180" }),
+  direccion: z.string().optional(),
+  delegacion: z.string().optional(),
+  colonia: z.string().optional(),
+  codigoPostal: z.string().optional(),
 })
 
 export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
@@ -311,6 +315,67 @@ export function MediaForm({ initialData, onUpdate }: MediaFormProps) {
                       <FormLabel>Estado</FormLabel>
                       <FormControl>
                         <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Nuevos campos de dirección */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="direccion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dirección</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="delegacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delegación / Municipio</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="colonia"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Colonia</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="codigoPostal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Código Postal</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="text" maxLength={5} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
