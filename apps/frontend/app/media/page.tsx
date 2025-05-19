@@ -127,6 +127,10 @@ export default function MediaPage() {
       orientacion: "",
       latitud: 0,
       longitud: 0,
+      direccion: "",
+      delegacion: "",
+      colonia: "",
+      codigoPostal: "",
     }
 
     setMediaItems([...mediaItems, newMedia])
@@ -255,7 +259,12 @@ export default function MediaPage() {
       'Característica',
       'Impactos por Mes',
       'Latitud',
-      'Longitud'
+      'Longitud',
+      'Dirección',
+      'Delegación',
+      'Colonia',
+      'Código Postal',
+      // Add more fields as needed..
     ].join(',')
 
     // Convert each media item to CSV row
@@ -275,7 +284,12 @@ export default function MediaPage() {
       item.caracteristica || '',
       item.impactosMes || '',
       item.latitud || '',
-      item.longitud || ''
+      item.longitud || '',
+      item.direccion || '',
+      item.delegacion || '',
+      item.colonia || '',
+      item.codigoPostal || '',
+      // Add more fields as needed..
     ].join(','))
 
     // Combine headers and rows

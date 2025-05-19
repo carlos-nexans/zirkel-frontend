@@ -93,6 +93,7 @@ type MediaData = {
     orientacion: Orientacion
     caracteristica?: Caracteristica
     // Si es posible, infiere o extrae los impactos. Si es necesario, suma los impactos en un solo número.
+    // Generalmente se indica como "Impactos en el mes", "Personas únicas", "Personas totales" o "Personas por mes".
     impactosMes?: number
     latitud: number
     longitud: number

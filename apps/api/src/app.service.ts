@@ -55,7 +55,7 @@ export class AppService {
           try {
             const imageXObject = await page.objs.get(args[0]);
             if (!imageXObject) continue;
-            
+
             if (imageXObject && imageXObject.width && imageXObject.height) {
               let currentTransform = [1, 0, 0, 1, 0, 0];
 
@@ -303,6 +303,8 @@ export class AppService {
 
       // Procesar cada medio
       for (const mediaData of mediaDataList) {
+        // Remove image handling since it's now done in the controller
+
         // Crear el string de coordenadas combinando latitud y longitud
         const coordenadas =
           mediaData.latitud && mediaData.longitud

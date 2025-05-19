@@ -1,4 +1,16 @@
-import { BadRequestException, Controller, Get, InternalServerErrorException, Logger, Post, UploadedFile, UseInterceptors, Body, UploadedFiles, Inject } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  InternalServerErrorException,
+  Logger,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+  Body,
+  UploadedFiles,
+  Inject,
+} from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { Cache } from 'cache-manager';
 import * as fs from 'fs';
@@ -15,7 +27,7 @@ export class AppController {
 
   constructor(
     private readonly appService: AppService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   private generateFileHash(buffer: Buffer): string {
@@ -52,7 +64,10 @@ export class AppController {
       await fs.promises.writeFile(tempFilePath, file.buffer);
 
       // Process the file using Gemini
-      const result = await this.appService.processFile(tempFilePath, file.mimetype);
+      const result = await this.appService.processFile(
+        tempFilePath,
+        file.mimetype,
+      );
 
       // Store in cache with TTL of 10 minutes (600 seconds)
       await this.cacheManager.set(fileHash, result, 600000);
@@ -60,7 +75,7 @@ export class AppController {
       return result;
     } catch (error) {
       console.error('Error processing file:', error);
-      throw new InternalServerErrorException('Error processing file'); 
+      throw new InternalServerErrorException('Error processing file');
     } finally {
       // Cleanup: Remove temporary file
       if (fs.existsSync(tempFilePath)) {
@@ -76,20 +91,38 @@ export class AppController {
 
   @Post('medios')
   @UseInterceptors(FilesInterceptor('files'))
-  async updateMedias(@Body() body: any, @UploadedFiles() files: Express.Multer.File[]) {
+  async updateMedias(
+    @Body() body: { mediaDataList: string },
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
     try {
-      // Parsear el string JSON a array de MediaData
-      const mediaDataList: MediaData[] = typeof body.mediaDataList === 'string' 
-        ? JSON.parse(body.mediaDataList)
-        : body.mediaDataList;
+      const mediaDataList: MediaData[] = JSON.parse(
+        body.mediaDataList,
+      ) as MediaData[];
 
-      // console.log('Datos de medios recibidos:', mediaDataList);
-      
-      // Procesar los datos de los medios
+      // Process the files first
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const mediaData = mediaDataList.find(
+            (media) => media.claveZirkel === file.originalname,
+          );
+          if (mediaData) {
+            const extension = file.mimetype.split('/')[1] || 'jpg';
+            const imagePath = `${process.env.IMAGES_PATH}/${mediaData.claveZirkel}.${extension}`;
+
+            // Ensure directory exists
+            await fs.promises.mkdir(process.env.IMAGES_PATH!, {
+              recursive: true,
+            });
+
+            // Save the file
+            await fs.promises.writeFile(imagePath, file.buffer);
+          }
+        }
+      }
+
+      // Process the media data
       await this.appService.updateMedias(mediaDataList);
-
-      // TODO: Procesar los archivos si es necesario
-      // console.log('Archivos recibidos:', files);
 
       return { message: 'Datos de medios actualizados correctamente' };
     } catch (error) {
