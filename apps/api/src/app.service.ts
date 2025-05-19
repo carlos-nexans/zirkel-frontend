@@ -3,9 +3,9 @@ import {
   GoogleGenAI,
   createUserContent,
   createPartFromUri,
-} from "@google/genai";
+} from '@google/genai';
 import { MediaDataExtraction } from './types';
-import { MediaData, Proveedor } from '@repo/common/types'
+import { MediaData, Proveedor } from '@repo/common/types';
 import { google } from 'googleapis';
 import * as sharp from 'sharp';
 import { extractPrompt } from './prompts';
@@ -21,10 +21,10 @@ export class AppService {
     this.genAI = new GoogleGenAI({ apiKey: process.env?.GEMINI_API_KEY! });
     this.loadPDFJS();
   }
-  
+
   private async loadPDFJS() {
     if (!this.pdfjs) {
-      const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
       this.pdfjs = pdfjsLib;
     }
     return this.pdfjs;
@@ -44,34 +44,48 @@ export class AppService {
       let maxArea = 0;
       const pdfjsLib = await this.loadPDFJS();
 
+      // First, ensure all objects are resolved
+      await page.objs.resolve();
+
       for (let i = 0; i < operatorList.fnArray.length; i++) {
         const op = operatorList.fnArray[i];
         const args = operatorList.argsArray[i];
-        
-        if (op === pdfjsLib.OPS.paintImageXObject && args && args[0]) {
-          const imageXObject = await page.objs.get(args[0]);
-          if (imageXObject && imageXObject.width && imageXObject.height) {
-            let currentTransform = [1, 0, 0, 1, 0, 0];
 
-            for (let j = i - 1; j >= 0; j--) {
-              if (operatorList.fnArray[j] === pdfjsLib.OPS.transform) {
-                currentTransform = operatorList.argsArray[j];
-                break;
+        if (op === pdfjsLib.OPS.paintImageXObject && args && args[0]) {
+          try {
+            const imageXObject = await page.objs.get(args[0]);
+            if (!imageXObject) continue;
+            
+            if (imageXObject && imageXObject.width && imageXObject.height) {
+              let currentTransform = [1, 0, 0, 1, 0, 0];
+
+              for (let j = i - 1; j >= 0; j--) {
+                if (operatorList.fnArray[j] === pdfjsLib.OPS.transform) {
+                  currentTransform = operatorList.argsArray[j];
+                  break;
+                }
+              }
+
+              const scaledWidth = Math.abs(
+                imageXObject.width * currentTransform[0],
+              );
+              const scaledHeight = Math.abs(
+                imageXObject.height * currentTransform[3],
+              );
+              const area = scaledWidth * scaledHeight;
+
+              if (area > maxArea) {
+                maxArea = area;
+                largestImage = {
+                  ...imageXObject,
+                  scaledWidth,
+                  scaledHeight,
+                };
               }
             }
-
-            const scaledWidth = Math.abs(imageXObject.width * currentTransform[0]);
-            const scaledHeight = Math.abs(imageXObject.height * currentTransform[3]);
-            const area = scaledWidth * scaledHeight;
-
-            if (area > maxArea) {
-              maxArea = area;
-              largestImage = {
-                ...imageXObject,
-                scaledWidth,
-                scaledHeight
-              };
-            }
+          } catch (err) {
+            console.warn(`Skipping image ${args[0]}: ${err.message}`);
+            continue;
           }
         }
       }
@@ -93,10 +107,10 @@ export class AppService {
           raw: {
             width,
             height,
-            channels: 3
-          }
+            channels: 3,
+          },
         }).resize(newWidth, newHeight, {
-          fit: 'contain'
+          fit: 'contain',
         });
 
         const buffer = await sharpImage.jpeg().toBuffer();
@@ -118,19 +132,21 @@ export class AppService {
       });
 
       const result = await this.genAI.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: 'gemini-2.0-flash',
         config: {
-          responseMimeType: "application/json",
+          responseMimeType: 'application/json',
         },
         contents: createUserContent([
-          createPartFromUri(file.uri!, file.mimeType!), extractPrompt,
+          createPartFromUri(file.uri!, file.mimeType!),
+          extractPrompt,
         ]),
       });
 
       const response = await result;
-      this.logger.log(`Gemini API usage ${response.usageMetadata?.totalTokenCount}`)
+      this.logger.log(
+        `Gemini API usage ${response.usageMetadata?.totalTokenCount}`,
+      );
       const extractedData = JSON.parse(response.text!) as MediaDataExtraction[];
-
 
       let pdfDocument;
       if (mimeType === 'application/pdf') {
@@ -147,8 +163,8 @@ export class AppService {
 
         return {
           ...item,
-          largestImage
-        }
+          largestImage,
+        };
       });
 
       return Promise.all(extractedDataWithImages);
@@ -159,9 +175,14 @@ export class AppService {
 
   async getProveedores(): Promise<Proveedor[]> {
     try {
-      const credentials = Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS || '', 'base64').toString();
+      const credentials = Buffer.from(
+        process.env.GOOGLE_SHEETS_CREDENTIALS || '',
+        'base64',
+      ).toString();
       if (!credentials) {
-        throw new Error('GOOGLE_SHEETS_CREDENTIALS environment variable is not set');
+        throw new Error(
+          'GOOGLE_SHEETS_CREDENTIALS environment variable is not set',
+        );
       }
 
       const parsedCredentials = JSON.parse(credentials);
@@ -170,7 +191,7 @@ export class AppService {
         credentials: parsedCredentials,
         scopes: [
           'https://www.googleapis.com/auth/drive.readonly',
-          'https://www.googleapis.com/auth/spreadsheets.readonly'
+          'https://www.googleapis.com/auth/spreadsheets.readonly',
         ],
       });
 
@@ -179,15 +200,15 @@ export class AppService {
 
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: 'PROVEEDORES!A:AA',  // Get all columns from the PROVEEDORES sheet
+        range: 'PROVEEDORES!A:AA', // Get all columns from the PROVEEDORES sheet
         valueRenderOption: 'UNFORMATTED_VALUE',
-        dateTimeRenderOption: 'FORMATTED_STRING'
+        dateTimeRenderOption: 'FORMATTED_STRING',
       });
 
       const rows = response.data.values || [];
       const data = rows.slice(1);
 
-      return data.map(row => {
+      return data.map((row) => {
         const proveedor: Proveedor = {
           clave: row[0]?.toString() || '',
           proveedor: row[1]?.toString() || '',
@@ -215,7 +236,7 @@ export class AppService {
           contacto: row[23]?.toString() || '',
           telefono: row[24]?.toString() || '',
           email: row[25]?.toString() || '',
-          restricciones: row[26]?.toString() || ''
+          restricciones: row[26]?.toString() || '',
         };
         return proveedor;
       });
@@ -227,17 +248,20 @@ export class AppService {
 
   async updateMedias(mediaDataList: MediaData[]): Promise<void> {
     try {
-      const credentials = Buffer.from(process.env.GOOGLE_SHEETS_CREDENTIALS || '', 'base64').toString();
+      const credentials = Buffer.from(
+        process.env.GOOGLE_SHEETS_CREDENTIALS || '',
+        'base64',
+      ).toString();
       if (!credentials) {
-        throw new Error('GOOGLE_SHEETS_CREDENTIALS environment variable is not set');
+        throw new Error(
+          'GOOGLE_SHEETS_CREDENTIALS environment variable is not set',
+        );
       }
 
       const parsedCredentials = JSON.parse(credentials);
       const auth = new google.auth.GoogleAuth({
         credentials: parsedCredentials,
-        scopes: [
-          'https://www.googleapis.com/auth/spreadsheets'
-        ],
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
 
       const sheets = google.sheets({ version: 'v4', auth });
@@ -252,7 +276,7 @@ export class AppService {
 
       const existingRows = response.data.values || [];
       const headers = existingRows[0] || [];
-      
+
       // Crear un mapa de índices de columnas
       const columnMap = {
         proveedor: headers.indexOf('PROVEEDOR'),
@@ -275,13 +299,14 @@ export class AppService {
       // Procesar cada medio
       for (const mediaData of mediaDataList) {
         // Crear el string de coordenadas combinando latitud y longitud
-        const coordenadas = mediaData.latitud && mediaData.longitud 
-          ? `${mediaData.latitud}, ${mediaData.longitud}`
-          : '';
+        const coordenadas =
+          mediaData.latitud && mediaData.longitud
+            ? `${mediaData.latitud}, ${mediaData.longitud}`
+            : '';
 
         // Buscar si el medio ya existe
         const existingRowIndex = existingRows.findIndex(
-          (row) => row[columnMap.claveZirkel] === mediaData.claveZirkel
+          (row) => row[columnMap.claveZirkel] === mediaData.claveZirkel,
         );
 
         if (existingRowIndex > 0) {
@@ -310,14 +335,18 @@ export class AppService {
             range: `INVENTARIO!A${existingRowIndex + 1}:Z${existingRowIndex + 1}`,
             valueInputOption: 'RAW',
             requestBody: {
-              values: [updatedRow]
-            }
+              values: [updatedRow],
+            },
           });
         } else {
           // Crear nuevo medio
           const newRow = new Array(headers.length).fill('');
           Object.entries(mediaData).forEach(([key, value]) => {
-            if (columnMap[key] !== undefined && key !== 'latitud' && key !== 'longitud') {
+            if (
+              columnMap[key] !== undefined &&
+              key !== 'latitud' &&
+              key !== 'longitud'
+            ) {
               newRow[columnMap[key]] = value;
             }
           });
@@ -334,13 +363,15 @@ export class AppService {
             valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             requestBody: {
-              values: [newRow]
-            }
+              values: [newRow],
+            },
           });
         }
       }
 
-      this.logger.log(`Actualización de ${mediaDataList.length} medios completada`);
+      this.logger.log(
+        `Actualización de ${mediaDataList.length} medios completada`,
+      );
     } catch (error) {
       this.logger.error('Error actualizando medios:', error);
       throw new Error(`Error actualizando medios: ${error.message}`);
