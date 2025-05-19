@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { MediaFormData } from "@/app/types";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { FileCheck, ExternalLink, RefreshCw } from "lucide-react";
 
 interface StoredProposal {
   proveedor: string;
@@ -27,9 +30,13 @@ export default function HotProposalsPage() {
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [results, setResults] = useState<MediaFormData[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [showDialog, setShowDialog] = useState(false);
+  const [dialogStatus, setDialogStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [progressValue, setProgressValue] = useState(0);
+  const [proposalUrl, setProposalUrl] = useState<string | null>(null);
   const { toast } = useToast();
   const baseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3002";
 
   useEffect(() => {
     // Load proposals from localStorage
@@ -132,8 +139,23 @@ export default function HotProposalsPage() {
     }
 
     setIsLoading(true);
+    setShowDialog(true);
+    setDialogStatus('loading');
+    setProgressValue(0);
+    setProposalUrl(null);
 
     try {
+      // Start progress animation
+      const progressInterval = setInterval(() => {
+        setProgressValue(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+
       const response = await fetch(`${baseUrl}/proposal`, {
         method: "POST",
         headers: {
@@ -146,12 +168,25 @@ export default function HotProposalsPage() {
         throw new Error("Error al crear la propuesta");
       }
 
+      const result = await response.json();
+      
+      // Complete progress and show success
+      clearInterval(progressInterval);
+      setProgressValue(100);
+      setDialogStatus('success');
+      
+      // Set the proposal URL if available
+      if (result && result.presentationUrl) {
+        setProposalUrl(result.presentationUrl);
+      }
+
       toast({
         title: "Propuesta creada",
         description: "La propuesta se ha creado exitosamente.",
       });
     } catch (error) {
       console.error("Error creating proposal:", error);
+      setDialogStatus('error');
       toast({
         title: "Error",
         description: "Hubo un problema al crear la propuesta.",
@@ -165,6 +200,91 @@ export default function HotProposalsPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Propuestas Recientes</h1>
+
+      {/* Dialog for proposal creation process */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogStatus === 'loading' && "Creando propuesta..."}
+              {dialogStatus === 'success' && "¡Propuesta creada exitosamente!"}
+              {dialogStatus === 'error' && "Error al crear la propuesta"}
+            </DialogTitle>
+            <DialogDescription>
+              {dialogStatus === 'loading' && "Por favor espere mientras se genera la propuesta."}
+              {dialogStatus === 'success' && "La propuesta ha sido creada y está lista para ser visualizada."}
+              {dialogStatus === 'error' && "Ocurrió un error al crear la propuesta. Por favor intente nuevamente."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {dialogStatus === 'loading' && (
+              <div className="space-y-4">
+                <Progress value={progressValue} className="h-2" />
+                <p className="text-center text-sm text-muted-foreground">
+                  Procesando {selectedItems.length} medios...
+                </p>
+              </div>
+            )}
+
+            {dialogStatus === 'success' && (
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <FileCheck className="h-8 w-8 text-green-600" />
+                </div>
+                <p className="text-center">
+                  La propuesta ha sido creada exitosamente con {selectedItems.length} medios.
+                </p>
+              </div>
+            )}
+
+            {dialogStatus === 'error' && (
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <p className="text-center text-red-500">
+                  No se pudo crear la propuesta. Por favor intente nuevamente.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            {dialogStatus === 'success' && (
+              <>
+                {proposalUrl && (
+                  <Button 
+                    className="w-full sm:w-auto" 
+                    onClick={() => window.open(proposalUrl, '_blank')}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Ver propuesta
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setShowDialog(false);
+                    window.location.reload();
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Crear otra propuesta
+                </Button>
+              </>
+            )}
+            
+            {dialogStatus === 'error' && (
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto"
+                onClick={() => setShowDialog(false)}
+              >
+                Cerrar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-10rem)]">
         <div className="lg:col-span-1 space-y-6 h-full">

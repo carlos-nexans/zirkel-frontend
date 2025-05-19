@@ -1,3 +1,13 @@
+/**
+ * This service requires the following environment variables:
+ * - GEMINI_API_KEY: API key for Google's Gemini AI
+ * - GOOGLE_SHEETS_CREDENTIALS: Base64 encoded Google service account credentials
+ * - GOOGLE_SHEETS_ID: ID of the Google Spreadsheet containing media data
+ * - GOOGLE_SLIDES_PROPOSAL_TEMPLATE: ID of the Google Slides template for proposals
+ * - GOOGLE_DRIVE_PROPOSAL_FOLDER: ID of the Google Drive folder to store proposals
+ * - IMAGES_PATH: Path to store media images
+ * - NEXT_PUBLIC_API_BASE_URL: Base URL for the API (for image URLs)
+ */
 import { Injectable, Logger } from '@nestjs/common';
 import {
   GoogleGenAI,
@@ -5,7 +15,7 @@ import {
   createPartFromUri,
 } from '@google/genai';
 import { MediaDataExtraction } from './types';
-import { MediaData, Proveedor } from '@repo/common/types';
+import { MediaData, Proveedor, ZirkelMediaData } from '@repo/common/types';
 import { google } from 'googleapis';
 import * as sharp from 'sharp';
 import { extractPrompt } from './prompts';
@@ -247,7 +257,7 @@ export class AppService {
     }
   }
 
-  async getMediasByKeys(zirkelKeys: string[]): Promise<MediaData[]> {
+  async getMediasByKeys(zirkelKeys: string[]): Promise<ZirkelMediaData[]> {
     try {
       const credentials = Buffer.from(
         process.env.GOOGLE_SHEETS_CREDENTIALS || '',
@@ -299,22 +309,25 @@ export class AppService {
         delegacion: headers.indexOf('DELEGACIÓN / MUNICIPIO'),
         colonia: headers.indexOf('COLONIA'),
         codigoPostal: headers.indexOf('CÓDIGO POSTAL'),
+        tarifa: headers.indexOf('TARIFA'),
       };
 
       // Filter rows by Zirkel keys
-      const filteredRows = rows.slice(1).filter(row => {
+      const filteredRows = rows.slice(1).filter((row) => {
         const claveZirkel = row[columnMap.claveZirkel];
         return zirkelKeys.includes(claveZirkel);
       });
 
       // Map filtered rows to MediaData objects
-      const mediaDataList: MediaData[] = filteredRows.map(row => {
+      const mediaDataList: ZirkelMediaData[] = filteredRows.map((row) => {
         // Extract coordinates if available
         let latitud = 0;
         let longitud = 0;
-        const coordenadas = row[columnMap.coordenadas];
+        const coordenadas = row[columnMap.coordenadas] as string;
         if (coordenadas && typeof coordenadas === 'string') {
-          const [lat, lng] = coordenadas.split(',').map(c => parseFloat(c.trim()));
+          const [lat, lng] = coordenadas
+            .split(',')
+            .map((c) => parseFloat(c.trim()));
           if (!isNaN(lat) && !isNaN(lng)) {
             latitud = lat;
             longitud = lng;
@@ -322,7 +335,7 @@ export class AppService {
         }
 
         // Create MediaData object
-        const mediaData: MediaData = {
+        const mediaData: ZirkelMediaData = {
           proveedor: row[columnMap.proveedor] || '',
           claveZirkel: row[columnMap.claveZirkel] || '',
           claveOriginalSitio: row[columnMap.claveOriginalSitio] || '',
@@ -341,15 +354,18 @@ export class AppService {
           delegacion: row[columnMap.delegacion] || '',
           colonia: row[columnMap.colonia] || '',
           codigoPostal: row[columnMap.codigoPostal] || '',
+          tarifa: row[columnMap.tarifa] || 0,
           latitud,
           longitud,
-          imageUrl: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}/media/${row[columnMap.claveZirkel]}.jpeg`,
+          imageUrl: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3002'}/media/${row[columnMap.claveZirkel]}.jpeg`,
         };
 
         return mediaData;
       });
 
-      this.logger.log(`Found ${mediaDataList.length} media items for ${zirkelKeys.length} Zirkel keys`);
+      this.logger.log(
+        `Found ${mediaDataList.length} media items for ${zirkelKeys.length} Zirkel keys`,
+      );
       return mediaDataList;
     } catch (error) {
       this.logger.error('Error fetching media by keys:', error);
@@ -357,8 +373,309 @@ export class AppService {
     }
   }
 
-  async createProposal(zirkelKeys: string[]): Promise<void> {
-    this.logger.log(`Creando propuesta con ${zirkelKeys.length} claves Zirkel: ${zirkelKeys.join(', ')}`);
+  /**
+   * Creates a proposal by:
+   * 1. Fetching media data from the spreadsheet using the provided Zirkel keys
+   * 2. Creating a copy of the Google Slides template
+   * 3. Duplicating the second slide for each media
+   * 4. Filling in the template with media data
+   *
+   * @param zirkelKeys Array of Zirkel keys to include in the proposal
+   * @returns The ID of the created Google Slides presentation
+   */
+  async createProposal(zirkelKeys: string[]): Promise<string> {
+    this.logger.log(
+      `Creando propuesta con ${zirkelKeys.length} claves Zirkel: ${zirkelKeys.join(', ')}`,
+    );
+
+    // 1. Fetch Media from the spreadsheet using the claveZirkel
+    const mediaList = await this.getMediasByKeys(zirkelKeys);
+    if (mediaList.length === 0) {
+      throw new Error('No media found with the provided Zirkel keys');
+    }
+
+    // Get credentials for Google API
+    const credentials = Buffer.from(
+      process.env.GOOGLE_SHEETS_CREDENTIALS || '',
+      'base64',
+    ).toString();
+    if (!credentials) {
+      throw new Error(
+        'GOOGLE_SHEETS_CREDENTIALS environment variable is not set',
+      );
+    }
+
+    const parsedCredentials = JSON.parse(credentials);
+    const auth = new google.auth.GoogleAuth({
+      credentials: parsedCredentials,
+      scopes: [
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/presentations',
+      ],
+    });
+
+    // 2. Create a copy of the Google Slides template
+    const drive = google.drive({ version: 'v3', auth });
+    const slides = google.slides({ version: 'v1', auth });
+
+    // Generate a unique name for the presentation
+    const date = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    const randomString = Math.random().toString(36).substring(2, 6); // 4 random characters
+    const presentationName = `${date}_${randomString}`;
+
+    // Create a copy of the template
+    const templateId = process.env.GOOGLE_SLIDES_PROPOSAL_TEMPLATE;
+    const folderId = process.env.GOOGLE_DRIVE_PROPOSAL_FOLDER;
+
+    if (!templateId) {
+      throw new Error(
+        'GOOGLE_SLIDES_PROPOSAL_TEMPLATE environment variable is not set',
+      );
+    }
+
+    if (!folderId) {
+      throw new Error(
+        'GOOGLE_DRIVE_PROPOSAL_FOLDER environment variable is not set',
+      );
+    }
+
+    const copyResponse = await drive.files.copy({
+      fileId: templateId,
+      requestBody: {
+        name: presentationName,
+        parents: [folderId],
+      },
+      supportsAllDrives: true,
+    });
+
+    const presentationId = copyResponse.data.id;
+    if (!presentationId) {
+      throw new Error('Failed to create a copy of the template');
+    }
+
+    this.logger.log(`Created presentation with ID: ${presentationId}`);
+
+    // 3. Get the presentation to understand its structure
+    let presentation = await slides.presentations.get({
+      presentationId,
+    });
+
+    // Find the second slide (template for media)
+    if (presentation.data.slides && presentation.data.slides.length < 2) {
+      throw new Error('Template presentation does not have enough slides');
+    }
+
+    const templateSlide = presentation.data.slides?.[1];
+    const templateSlideId = templateSlide?.objectId;
+
+    if (!templateSlideId) {
+      throw new Error('Could not find template slide ID');
+    }
+
+    // 3.1. Leave the first page intact
+
+    // 3.2. Duplicate the second page for each media and update content
+    const requests: any[] = [];
+
+    const slidesList = presentation.data.slides;
+
+    if (!slidesList || slidesList.length < 2) {
+      throw new Error('La presentación no tiene al menos 2 slides');
+    }
+
+    // First, create duplicates of the template slide for each media (except the first one)
+    for (let i = 1; i < mediaList.length; i++) {
+      requests.push({
+        duplicateObject: {
+          objectId: templateSlideId,
+        },
+      });
+    }
+
+    // Apply the duplication requests
+    if (requests.length > 0) {
+      await slides.presentations.batchUpdate({
+        presentationId,
+        requestBody: {
+          requests,
+        },
+      });
+    }
+
+    // Fetch the presentation again to get the updated slides
+    presentation = await slides.presentations.get({
+      presentationId,
+    });
+
+    // Now, update each slide with the media data
+    for (let i = 0; i < mediaList.length; i++) {
+      const media = mediaList[i];
+      const currentSlideId = presentation.data.slides?.[i + 1]?.objectId;
+      if (!currentSlideId) {
+        this.logger.warn(
+          `Could not find slide ID for media ${media.claveZirkel}`,
+        );
+        continue;
+      }
+
+      // Get the current slide to find the table
+      const slideResponse = await slides.presentations.get({
+        presentationId,
+        fields: 'slides',
+      });
+
+      const currentSlide = slideResponse.data.slides?.find(
+        (slide) => slide.objectId === currentSlideId,
+      );
+
+      if (!currentSlide) {
+        this.logger.warn(`Could not find slide with ID ${currentSlideId}`);
+        continue;
+      }
+
+      // Find the table in the slide
+      const tableElement = currentSlide.pageElements?.find(
+        (element) => element.table !== undefined,
+      );
+
+      if (!tableElement || !tableElement.objectId || !tableElement.table) {
+        this.logger.warn(`Could not find table in slide ${currentSlideId}`);
+        continue;
+      }
+
+      // Prepare the replacement requests for this slide
+      const replacementRequests: any[] = [];
+
+      // Helper function to add text replacement if value exists
+      const addReplacement = (
+        findText: string,
+        replaceText: any,
+        deleteRowIfEmpty = true,
+      ) => {
+        if (
+          replaceText !== undefined &&
+          replaceText !== null &&
+          replaceText !== ''
+        ) {
+          replacementRequests.push({
+            replaceAllText: {
+              containsText: { text: findText },
+              replaceText: String(replaceText),
+              pageObjectIds: [currentSlideId],
+            },
+          });
+          return true;
+        } else if (deleteRowIfEmpty) {
+          // If we need to delete the row, we'll handle it separately
+          return false;
+        }
+        return true;
+      };
+
+      // Add replacements for each field
+      const replacements = [
+        { find: 'CLAVE', value: media.claveZirkel },
+        { find: 'CIUDAD', value: media.ciudad },
+        { find: 'DIRECCIÓN', value: media.direccion },
+        { find: 'MEDIDA', value: `${media.base}x${media.altura}` },
+        { find: 'TIPO', value: media.tipoMedio },
+        {
+          find: 'COORDENADAS',
+          value:
+            media.latitud && media.longitud
+              ? `${media.latitud}, ${media.longitud}`
+              : '',
+        },
+        { find: 'IMPACTOS', value: media.impactosMes },
+        {
+          find: 'PRECIO',
+          value: media.tarifa ? `$${media.costo.toLocaleString('es-MX')}` : '',
+        },
+      ];
+
+      // Track which rows need to be deleted due to missing values
+      const rowsToDelete: any[] = [];
+
+      // Process each replacement
+      replacements.forEach((replacement) => {
+        const hasValue = addReplacement(replacement.find, replacement.value);
+        if (!hasValue) {
+          // Mark this row for deletion
+          rowsToDelete.push(replacement.find);
+        }
+      });
+
+      // Apply the text replacements
+      if (replacementRequests.length > 0) {
+        await slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests: replacementRequests,
+          },
+        });
+      }
+
+      // TODO: Handle row deletion for empty values if needed
+      // This would require more complex logic to identify and delete specific table rows
+      // which is beyond the scope of this implementation
+
+      // Add data to speaker notes
+      const speakerNotesObjectId =
+        currentSlide.notesProperties?.speakerNotesObjectId;
+
+      if (speakerNotesObjectId) {
+        let speakerNotesText = ``;
+
+        for (let key of Object.keys(media)) {
+          const value = media[key as keyof ZirkelMediaData];
+          if (value !== undefined && value !== null && value !== '') {
+            speakerNotesText += `${key}: ${value}\n`;
+          }
+        }
+
+        const speakerNotesRequests = [
+          {
+            replaceAllText: {
+              containsText: { text: 'Click to add speaker notes' }, // Target the default placeholder text
+              replaceText: speakerNotesText,
+              pageObjectIds: [currentSlideId], // Apply to the current slide's notes page
+            },
+          },
+        ];
+
+        await slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests: speakerNotesRequests,
+          },
+        });
+      } else {
+        this.logger.warn(
+          `Could not find speaker notes object ID for slide ${currentSlideId}`,
+        );
+      }
+    }
+
+    // Delete the original template slide (the second slide)
+    if (templateSlideId) {
+      await slides.presentations.batchUpdate({
+        presentationId,
+        requestBody: {
+          requests: [
+            {
+              deleteObject: {
+                objectId: templateSlideId,
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    this.logger.log(
+      `Propuesta ${presentationName} creada con éxito. ID: ${presentationId}`,
+    );
+    return presentationId;
   }
 
   async updateMedias(mediaDataList: MediaData[]): Promise<void> {

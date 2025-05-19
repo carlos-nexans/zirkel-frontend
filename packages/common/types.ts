@@ -1,5 +1,5 @@
 // Revisar luego
-// PROVEEDOR	CLAVE ORIGINAL	 COSTO	MEDIO	ESTADO 	CIUDAD	CLAVE	DIRECCIÓN	COLONIA	DELEGACIÓN / MUNICIPIO	REFERENCIA	COORDENADAS	BASE	ALTURA	ILUMINACIÓN	VISTA	ORIENTACIÓN	CARACTERISTICAS	CANTIDAD	 TARIFA	IMPACTOS MES	NSE Zona	Sector
+
 export interface MediaData {
     proveedor: string
     claveOriginalSitio: string
@@ -24,6 +24,8 @@ export interface MediaData {
     colonia: string
     codigoPostal: string
 }
+
+export type ZirkelMediaData = MediaData & { tarifa: number }
 
 export type Iliminacion = 
     | 'Si'

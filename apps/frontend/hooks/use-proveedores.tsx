@@ -5,7 +5,7 @@ export const useProveedores = () => {
     const { data: providers = [], isLoading: isLoadingProviders, error } = useQuery<Proveedor[]>({
         queryKey: ["providers"],
         queryFn: async () => {
-            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
+            const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3002"
             const url = `${baseUrl}/proveedores`
             const response = await fetch(url)
             if (!response.ok) {

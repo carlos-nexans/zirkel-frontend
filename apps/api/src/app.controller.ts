@@ -103,8 +103,12 @@ export class AppController {
   @Post('proposal')
   async createProposal(@Body() body: { zirkelKeys: string[] }) {
     try {
-      await this.appService.createProposal(body.zirkelKeys);
-      return { message: 'Propuesta creada exitosamente' };
+      const presentationId = await this.appService.createProposal(body.zirkelKeys);
+      return { 
+        message: 'Propuesta creada exitosamente',
+        presentationId,
+        presentationUrl: `https://docs.google.com/presentation/d/${presentationId}/edit`
+      };
     } catch (error) {
       this.logger.error('Error al crear la propuesta:', error);
       throw new InternalServerErrorException('Error al crear la propuesta');

@@ -5,7 +5,7 @@ import { FileUploader } from "@/components/file-uploader"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MediaList } from "@/components/media-list"
-import { Copy, FileText, Plus, Save } from "lucide-react"
+import { Copy, FileText, Plus, Save, FileCheck, Upload } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { MediaFormData } from "@/app/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,6 +14,9 @@ import { useProveedores } from "@/hooks/use-proveedores"
 import { FormLabel } from "@/components/ui/form"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+import Link from "next/link"
 
 export type MediaDataExtraction = {
   // Clave única del medio
@@ -45,6 +48,9 @@ export default function MediaPage() {
   const [mediaItems, setMediaItems] = useState<MediaFormData[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [provider, setProvider] = useState<Proveedor | null>(null);
+  const [showDialog, setShowDialog] = useState(false)
+  const [dialogStatus, setDialogStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [progressValue, setProgressValue] = useState(0)
   const { toast } = useToast()
   const { providers = [], isLoadingProviders } = useProveedores();
 
@@ -52,7 +58,7 @@ export default function MediaPage() {
     setIsLoading(true)
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3002";
       const url = `${baseUrl}/extract`;
 
       const formData = new FormData();
@@ -165,8 +171,22 @@ export default function MediaPage() {
     }
 
     setIsLoading(true)
+    setShowDialog(true)
+    setDialogStatus('loading')
+    setProgressValue(0)
 
     try {
+      // Start progress animation
+      const progressInterval = setInterval(() => {
+        setProgressValue(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval)
+            return 90
+          }
+          return prev + 10
+        })
+      }, 500)
+
       const mediaData: MediaData[] = mediaItems.map((item) => ({
         ...item,
         proveedor: provider?.proveedor!,
@@ -197,7 +217,7 @@ export default function MediaPage() {
         }
       }
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000";
+      const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3002";
       const response = await fetch(`${baseUrl}/medios`, {
         method: "POST",
         body: formData
@@ -221,11 +241,18 @@ export default function MediaPage() {
 
       localStorage.setItem('mediaProposals', JSON.stringify([...existingData, newProposal]));
 
+      // Complete progress and show success
+      clearInterval(progressInterval)
+      setProgressValue(100)
+      setDialogStatus('success')
+
       toast({
         title: "Datos guardados",
         description: `Se han guardado ${mediaItems.length} espacios de medios.`,
       })
     } catch (error) {
+      console.error("Error saving media data:", error)
+      setDialogStatus('error')
       toast({
         title: "Error",
         description: "Hubo un problema al guardar los datos.",
@@ -310,6 +337,91 @@ export default function MediaPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-6">Gestión de espacios</h1>
+
+      {/* Dialog for saving process */}
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {dialogStatus === 'loading' && "Guardando espacios..."}
+              {dialogStatus === 'success' && "¡Espacios guardados exitosamente!"}
+              {dialogStatus === 'error' && "Error al guardar espacios"}
+            </DialogTitle>
+            <DialogDescription>
+              {dialogStatus === 'loading' && "Por favor espere mientras se guardan los espacios."}
+              {dialogStatus === 'success' && "Los espacios han sido guardados y están listos para crear propuestas."}
+              {dialogStatus === 'error' && "Ocurrió un error al guardar los espacios. Por favor intente nuevamente."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {dialogStatus === 'loading' && (
+              <div className="space-y-4">
+                <Progress value={progressValue} className="h-2" />
+                <p className="text-center text-sm text-muted-foreground">
+                  Procesando {mediaItems.length} espacios...
+                </p>
+              </div>
+            )}
+
+            {dialogStatus === 'success' && (
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                  <FileCheck className="h-8 w-8 text-green-600" />
+                </div>
+                <p className="text-center">
+                  Se han guardado {mediaItems.length} espacios exitosamente.
+                </p>
+              </div>
+            )}
+
+            {dialogStatus === 'error' && (
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <p className="text-center text-red-500">
+                  No se pudieron guardar los espacios. Por favor intente nuevamente.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            {dialogStatus === 'success' && (
+              <>
+                <Button 
+                  className="w-full sm:w-auto" 
+                  asChild
+                >
+                  <Link href="/hot-proposals">
+                    <FileCheck className="mr-2 h-4 w-4" />
+                    Crear propuesta
+                  </Link>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setShowDialog(false);
+                    window.location.reload();
+                  }}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Subir otro archivo
+                </Button>
+              </>
+            )}
+            
+            {dialogStatus === 'error' && (
+              <Button 
+                variant="outline" 
+                className="w-full sm:w-auto"
+                onClick={() => setShowDialog(false)}
+              >
+                Cerrar
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="file">
         <TabsList>
