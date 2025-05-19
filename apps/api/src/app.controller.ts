@@ -100,6 +100,17 @@ export class AppController {
     }
   }
 
+  @Post('proposal')
+  async createProposal(@Body() body: { zirkelKeys: string[] }) {
+    try {
+      await this.appService.createProposal(body.zirkelKeys);
+      return { message: 'Propuesta creada exitosamente' };
+    } catch (error) {
+      this.logger.error('Error al crear la propuesta:', error);
+      throw new InternalServerErrorException('Error al crear la propuesta');
+    }
+  }
+
   @Post('medios')
   @UseInterceptors(FilesInterceptor('files'))
   async updateMedias(

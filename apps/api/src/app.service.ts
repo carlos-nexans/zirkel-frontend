@@ -357,6 +357,10 @@ export class AppService {
     }
   }
 
+  async createProposal(zirkelKeys: string[]): Promise<void> {
+    this.logger.log(`Creando propuesta con ${zirkelKeys.length} claves Zirkel: ${zirkelKeys.join(', ')}`);
+  }
+
   async updateMedias(mediaDataList: MediaData[]): Promise<void> {
     try {
       const credentials = Buffer.from(

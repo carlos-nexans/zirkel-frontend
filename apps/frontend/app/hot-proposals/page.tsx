@@ -121,7 +121,46 @@ export default function HotProposalsPage() {
     }
   };
 
-  const handleGenerateProposal = async () => {};
+  const handleGenerateProposal = async () => {
+    if (selectedItems.length === 0) {
+      toast({
+        title: "Selección vacía",
+        description: "Por favor seleccione al menos un medio.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`${baseUrl}/proposal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ zirkelKeys: selectedItems }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al crear la propuesta");
+      }
+
+      toast({
+        title: "Propuesta creada",
+        description: "La propuesta se ha creado exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error creating proposal:", error);
+      toast({
+        title: "Error",
+        description: "Hubo un problema al crear la propuesta.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div>
