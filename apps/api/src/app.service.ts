@@ -464,22 +464,36 @@ export class AppService {
       presentationId,
     });
 
-    // Find the second slide (template for media)
-    if (presentation.data.slides && presentation.data.slides.length < 2) {
+    // Find the first and second slides
+    if (!presentation.data.slides || presentation.data.slides.length < 2) {
       throw new Error('Template presentation does not have enough slides');
     }
 
-    const templateSlide = presentation.data.slides?.[1];
-    const templateSlideId = templateSlide?.objectId;
+    const firstSlide = presentation.data.slides[0];
+    const firstSlideId = firstSlide.objectId;
 
-    if (!templateSlideId) {
-      throw new Error('Could not find template slide ID');
+    const templateSlide = presentation.data.slides[1];
+    const templateSlideId = templateSlide.objectId;
+
+    if (!firstSlideId || !templateSlideId) {
+      throw new Error('Could not find slide IDs');
     }
 
-    // 3.1. Leave the first page intact
+    // 3.1. Update the date on the first slide
+    const currentDate = new Date();
+    const monthYearFormat = currentDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+
+    const requests: any[] = [
+      {
+        replaceAllText: {
+          containsText: { text: 'FECHA' },
+          replaceText: monthYearFormat,
+          pageObjectIds: [firstSlideId],
+        },
+      },
+    ];
 
     // 3.2. Duplicate the second page for each media and update content
-    const requests: any[] = [];
 
     const slidesList = presentation.data.slides;
 
