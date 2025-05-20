@@ -537,10 +537,10 @@ export class AppService {
       const tableElement = currentSlide.pageElements?.find(
         (element) => element.table !== undefined,
       );
-      const imagePlaceholder = currentSlide.pageElements?.find(
-        (element) => element.shape?.text?.textElements?.some(
-          (textElement) => textElement.textRun?.content?.includes('Imagen')
-        )
+      const imagePlaceholder = currentSlide.pageElements?.find((element) =>
+        element.shape?.text?.textElements?.some((textElement) =>
+          textElement.textRun?.content?.includes('Imagen'),
+        ),
       );
 
       if (!tableElement || !tableElement.objectId || !tableElement.table) {
@@ -549,7 +549,9 @@ export class AppService {
       }
 
       if (!imagePlaceholder || !imagePlaceholder.objectId) {
-        this.logger.warn(`Could not find image placeholder in slide ${currentSlideId}`);
+        this.logger.warn(
+          `Could not find image placeholder in slide ${currentSlideId}`,
+        );
         continue;
       }
 
@@ -583,23 +585,31 @@ export class AppService {
       };
 
       // Add replacements for each field
-      const replacements = [
-        { find: 'CLAVE', value: media.claveZirkel },
-        { find: 'CIUDAD', value: media.ciudad },
-        { find: 'DIRECCIÓN', value: media.direccion },
-        { find: 'MEDIDA', value: `${media.base}x${media.altura}` },
-        { find: 'TIPO', value: media.tipoMedio },
+      const replacements: any[] = [
+        { find: 'CLAVE', value: media.claveZirkel || 'Consultar' },
+        { find: 'CIUDAD', value: media.ciudad || 'Consultar' },
+        { find: 'DIRECCIÓN', value: media.direccion || 'Consultar' },
+        {
+          find: 'MEDIDA',
+          value:
+            media.base && media.altura
+              ? `${media.base}x${media.altura}`
+              : 'Consultar',
+        },
+        { find: 'TIPO', value: media.tipoMedio || 'Consultar' },
         {
           find: 'COORDENADAS',
           value:
             media.latitud && media.longitud
               ? `${media.latitud}, ${media.longitud}`
-              : '',
+              : 'Consultar',
         },
-        { find: 'IMPACTOS', value: media.impactosMes },
+        { find: 'IMPACTOS', value: media.impactosMes || 'Consultar' },
         {
           find: 'PRECIO',
-          value: media.tarifa ? `$${media.costo.toLocaleString('es-MX')}` : '',
+          value: media.tarifa
+            ? `$${media.costo.toLocaleString('es-MX')}`
+            : 'Consultar',
         },
       ];
 
@@ -615,12 +625,17 @@ export class AppService {
         }
       });
 
+      const url = process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost')
+        ? 'https://images.unsplash.com/photo-1513757378314-e46255f6ed16?q=80&w=2670&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+        : `${process.env.NEXT_PUBLIC_API_BASE_URL}/media/${media.claveZirkel}.jpeg`;
+
       // Prepare requests for text replacements and image insertion
       const requests = [
+        // eslint-disable-next-line
         ...replacementRequests,
         {
           createImage: {
-            url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/media/${media.claveZirkel}.jpeg`,
+            url,
             elementProperties: {
               pageObjectId: currentSlideId,
               size: imagePlaceholder.size,
@@ -647,41 +662,52 @@ export class AppService {
       // This would require more complex logic to identify and delete specific table rows
       // which is beyond the scope of this implementation
 
-      // Add data to speaker notes
-      const speakerNotesObjectId =
-        currentSlide.notesProperties?.speakerNotesObjectId;
-
-      if (speakerNotesObjectId) {
-        let speakerNotesText = ``;
-
-        for (let key of Object.keys(media)) {
-          const value = media[key as keyof ZirkelMediaData];
-          if (value !== undefined && value !== null && value !== '') {
-            speakerNotesText += `${key}: ${value}\n`;
-          }
+      // Add data as off-screen text
+      let dataText = ``;
+      for (const key of Object.keys(media)) {
+        // eslint-disable-next-line
+        const value = media[key as keyof ZirkelMediaData];
+        if (value !== undefined && value !== null && value !== '') {
+          dataText += `${key}: ${value}\n`;
         }
+      }
 
-        const speakerNotesRequests = [
-          {
-            replaceAllText: {
-              containsText: { text: 'Click to add speaker notes' }, // Target the default placeholder text
-              replaceText: speakerNotesText,
-              pageObjectIds: [currentSlideId], // Apply to the current slide's notes page
+      // Create a text box off-screen with the data
+      const offScreenTextRequests = [
+        {
+          createShape: {
+            objectId: `data_${currentSlideId}`,
+            shapeType: 'TEXT_BOX',
+            elementProperties: {
+              pageObjectId: currentSlideId,
+              size: {
+                width: { magnitude: 300, unit: 'PT' },
+                height: { magnitude: 500, unit: 'PT' },
+              },
+              transform: {
+                scaleX: 1,
+                scaleY: 1,
+                translateX: 1000, // Position off-screen
+                translateY: 0,
+                unit: 'PT',
+              },
             },
           },
-        ];
-
-        await slides.presentations.batchUpdate({
-          presentationId,
-          requestBody: {
-            requests: speakerNotesRequests,
+        },
+        {
+          insertText: {
+            objectId: `data_${currentSlideId}`,
+            text: dataText,
           },
-        });
-      } else {
-        this.logger.warn(
-          `Could not find speaker notes object ID for slide ${currentSlideId}`,
-        );
-      }
+        },
+      ];
+
+      await slides.presentations.batchUpdate({
+        presentationId,
+        requestBody: {
+          requests: offScreenTextRequests,
+        },
+      });
     }
 
     // Delete the original template slide (the second slide) is not needed anymore
