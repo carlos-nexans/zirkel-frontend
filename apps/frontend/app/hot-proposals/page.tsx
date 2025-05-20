@@ -14,6 +14,7 @@ import type { MediaFormData } from "@/app/types";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { FileCheck, ExternalLink, RefreshCw } from "lucide-react";
+import { ZirkelMediaData } from "@repo/common/types";
 
 interface StoredProposal {
   proveedor: string;
@@ -28,7 +29,7 @@ export default function HotProposalsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [proposals, setProposals] = useState<StoredProposal[]>([]);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
-  const [results, setResults] = useState<MediaFormData[]>([]);
+  const [results, setResults] = useState<ZirkelMediaData[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [showDialog, setShowDialog] = useState(false);
   const [dialogStatus, setDialogStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -424,6 +425,16 @@ export default function HotProposalsPage() {
                               </span>
                               <span className="font-medium">
                                 ${media.costo.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+                          {media.tarifa && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">
+                                Tarifa Espacio:
+                              </span>
+                              <span className="font-medium">
+                                ${media.tarifa.toLocaleString()}
                               </span>
                             </div>
                           )}

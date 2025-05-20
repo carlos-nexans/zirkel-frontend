@@ -15,7 +15,7 @@ primary_region = 'gdl'
   IMAGES_PATH='/data/media_images'
   GOOGLE_SLIDES_PROPOSAL_TEMPLATE='1jH_0q4_5j1zHUVxeVOwuwxFWqR6twv-JNmFYUifE4wE'
   GOOGLE_DRIVE_PROPOSAL_FOLDER='19SuCK9XwnEuYai8-I9L1zPFk3aCef4dW'
-  NEXT_PUBLIC_API_BASE_URL='http://localhost:3002'
+  NEXT_PUBLIC_API_BASE_URL='https://zirkel-api.fly.dev'
 
 [http_service]
   internal_port = 3000
