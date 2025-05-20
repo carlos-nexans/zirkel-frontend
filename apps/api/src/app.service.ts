@@ -610,7 +610,7 @@ export class AppService {
         {
           find: 'PRECIO',
           value: media.tarifa
-            ? `$${media.costo.toLocaleString('es-MX')}`
+            ? `$${media.tarifa.toLocaleString('es-MX')}`
             : 'Consultar',
         },
       ];

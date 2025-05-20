@@ -8,7 +8,7 @@ export function useServerStatus() {
   const checkServerStatus = async () => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3002"
-      const response = await fetch(`${baseUrl}/`)
+      const response = await fetch(`${baseUrl}/`, { signal: AbortSignal.timeout(3000) })
       
       if (response.ok) {
         const text = await response.text()
