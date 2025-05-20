@@ -21,6 +21,9 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    domains: [
+      "zirkel-api.fly.dev",
+    ]
   },
   experimental: {
     webpackBuildWorker: true,
