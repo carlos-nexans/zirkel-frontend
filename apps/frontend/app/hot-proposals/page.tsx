@@ -199,7 +199,7 @@ export default function HotProposalsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Propuestas Recientes</h1>
+      <h1 className="text-3xl font-bold mb-6">Propuesta rápida</h1>
 
       {/* Dialog for proposal creation process */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
