@@ -9,6 +9,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { BreadcrumbNav } from "@/components/breadcrumb-nav"
+import { ServerStatusCheck } from "@/components/server-status-check"
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -37,6 +38,7 @@ export default function RootLayout({
               </header>
               <div className="flex flex-1 flex-col p-4">
                 <Toaster />
+                <ServerStatusCheck />
                 {children}
               </div>
             </SidebarInset>

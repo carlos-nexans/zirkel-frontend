@@ -13,6 +13,7 @@ import {
   GoogleGenAI,
   createUserContent,
   createPartFromUri,
+  createPartFromBase64,
 } from '@google/genai';
 import { MediaDataExtraction } from './types';
 import { MediaData, Proveedor, ZirkelMediaData } from '@repo/common/types';
@@ -169,7 +170,8 @@ export class AppService {
         let largestImage: string | null = null;
         if (mimeType === 'application/pdf') {
           const page = await pdfDocument.getPage(item.pagina);
-          largestImage = await this.getPageLargestImageFromPDF(page);
+          // largestImage = await this.getPageLargestImageFromPDF(page);
+          largestImage = await this.findBestImageForMedia(page, item);
         }
 
         return {
@@ -867,6 +869,122 @@ export class AppService {
     } catch (error) {
       this.logger.error('Error actualizando medios:', error);
       throw new Error(`Error actualizando medios: ${error.message}`);
+    }
+  }
+  private async getAllImagesFromPDFPage(page: any): Promise<string[]> {
+    const images: string[] = [];
+    try {
+      const operatorList = await page.getOperatorList();
+      const pdfjsLib = await this.loadPDFJS();
+
+      await page.objs.resolve();
+
+      for (let i = 0; i < operatorList.fnArray.length; i++) {
+        const op = operatorList.fnArray[i];
+        const args = operatorList.argsArray[i];
+
+        if (op === pdfjsLib.OPS.paintImageXObject && args && args[0]) {
+          try {
+            const imageXObject = await page.objs.get(args[0]);
+            if (!imageXObject) continue;
+
+            if (imageXObject && imageXObject.width && imageXObject.height) {
+              const { width, height, data } = imageXObject;
+
+              // Resize image to a reasonable size for Gemini
+              const sharpImage = sharp(data, {
+                raw: {
+                  width,
+                  height,
+                  channels: 3, // Assuming RGB, adjust if needed
+                },
+              }).resize(600, null, {
+                fit: 'contain',
+                withoutEnlargement: true,
+              });
+
+              const buffer = await sharpImage.jpeg().toBuffer();
+              images.push(
+                `data:image/jpeg;base64,${buffer.toString('base64')}`,
+              );
+            }
+          } catch (err) {
+            // this.logger.warn(`Skipping image ${args[0]}: ${err.message}`);
+            continue;
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error extracting images:', error);
+    }
+    return images;
+  }
+
+  async findBestImageForMedia(
+    page: any,
+    mediaData: MediaDataExtraction,
+  ): Promise<string | null> {
+    try {
+      const images = await this.getAllImagesFromPDFPage(page);
+
+      if (images.length === 0) {
+        return null;
+      }
+
+      // Create prompt including media data and asking Gemini to select the best image
+      const prompt = `Given the following media data:
+  ${JSON.stringify(mediaData, null, 2)}
+  
+  Select the image that best represents this media data. Respond with the index of the best image (0-based).
+  If not image is suitable, respond with the best available one.
+  Have preference for photographs of the media, if avaialble.
+  If there is not photographs, the second best is the map.
+  Respond using this schema { "index": number }.
+  `;
+
+      const contents = createUserContent([
+        ...images.map((img) => {
+          // Remove the Data URL prefix if present
+          const base64Data = img.startsWith('data:image/jpeg;base64,')
+            ? img.substring('data:image/jpeg;base64,'.length)
+            : img;
+          return createPartFromBase64(base64Data, 'image/jpeg');
+        }),
+        prompt,
+      ]);
+
+      const result = await this.genAI.models.generateContent({
+        model: 'gemini-2.0-flash',
+        // model: 'gemini-2.5-pro-preview-05-06',
+        config: {
+          responseMimeType: 'application/json',
+        },
+        contents,
+      });
+
+      const responseText = result.text!;
+
+      this.logger.log(
+        `Gemini API usage for image selection: ${result.usageMetadata?.totalTokenCount}`,
+      );
+
+      // eslint-disable-next-line
+      const json = JSON.parse(responseText);
+
+      // eslint-disable-next-line
+      const selectedIndex: number = json.index;
+
+      if (selectedIndex >= 0 && selectedIndex < images.length) {
+        return images[selectedIndex];
+      } else {
+        this.logger.warn(
+          `Gemini returned invalid index ${selectedIndex}. Returning null.`,
+        );
+        return null;
+      }
+    } catch (error) {
+      this.logger.error('Error finding best image:', error);
+      return null;
     }
   }
 }
