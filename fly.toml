@@ -12,6 +12,10 @@ primary_region = 'gdl'
 [env]
   NODE_ENV = 'production'
   PORT = '3000'
+  IMAGES_PATH='/data/media_images'
+  GOOGLE_SLIDES_PROPOSAL_TEMPLATE='1jH_0q4_5j1zHUVxeVOwuwxFWqR6twv-JNmFYUifE4wE'
+  GOOGLE_DRIVE_PROPOSAL_FOLDER='19SuCK9XwnEuYai8-I9L1zPFk3aCef4dW'
+  NEXT_PUBLIC_API_BASE_URL='http://localhost:3002'
 
 [http_service]
   internal_port = 3000
@@ -25,3 +29,11 @@ primary_region = 'gdl'
   memory = '3gb'
   cpu_kind = 'shared'
   cpus = 2
+
+[mounts]
+  source = "zirkel_data"
+  destination = "/data"
+
+[[volumes]]
+  name = "zirkel_data"
+  size = "1"

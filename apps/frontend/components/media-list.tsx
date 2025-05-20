@@ -10,13 +10,14 @@ interface MediaListProps {
   mediaItems: MediaFormData[]
   onUpdate: (id: string, data: MediaFormData) => void
   onRemove: (id: string) => void
+  reviewedItems: Record<string, boolean>
+  setReviewedItems: (items: Record<string, boolean>) => void
 }
 
-export function MediaList({ mediaItems, onUpdate, onRemove }: MediaListProps) {
+export function MediaList({ mediaItems, onUpdate, onRemove, reviewedItems, setReviewedItems }: MediaListProps) {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     mediaItems.reduce((acc, item) => ({ ...acc, [item.id]: true }), {}),
   )
-  const [reviewedItems, setReviewedItems] = useState<Record<string, boolean>>({})
 
   const toggleExpand = (id: string) => {
     setExpandedItems((prev) => ({

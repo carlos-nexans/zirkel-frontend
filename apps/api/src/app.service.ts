@@ -533,13 +533,23 @@ export class AppService {
         continue;
       }
 
-      // Find the table in the slide
+      // Find the table and image placeholder in the slide
       const tableElement = currentSlide.pageElements?.find(
         (element) => element.table !== undefined,
+      );
+      const imagePlaceholder = currentSlide.pageElements?.find(
+        (element) => element.shape?.text?.textElements?.some(
+          (textElement) => textElement.textRun?.content?.includes('Imagen')
+        )
       );
 
       if (!tableElement || !tableElement.objectId || !tableElement.table) {
         this.logger.warn(`Could not find table in slide ${currentSlideId}`);
+        continue;
+      }
+
+      if (!imagePlaceholder || !imagePlaceholder.objectId) {
+        this.logger.warn(`Could not find image placeholder in slide ${currentSlideId}`);
         continue;
       }
 
@@ -605,15 +615,33 @@ export class AppService {
         }
       });
 
-      // Apply the text replacements
-      if (replacementRequests.length > 0) {
-        await slides.presentations.batchUpdate({
-          presentationId,
-          requestBody: {
-            requests: replacementRequests,
+      // Prepare requests for text replacements and image insertion
+      const requests = [
+        ...replacementRequests,
+        {
+          createImage: {
+            url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/media/${media.claveZirkel}.jpeg`,
+            elementProperties: {
+              pageObjectId: currentSlideId,
+              size: imagePlaceholder.size,
+              transform: imagePlaceholder.transform,
+            },
           },
-        });
-      }
+        },
+        {
+          deleteObject: {
+            objectId: imagePlaceholder.objectId,
+          },
+        },
+      ];
+
+      // Apply all updates
+      await slides.presentations.batchUpdate({
+        presentationId,
+        requestBody: {
+          requests,
+        },
+      });
 
       // TODO: Handle row deletion for empty values if needed
       // This would require more complex logic to identify and delete specific table rows
@@ -656,21 +684,21 @@ export class AppService {
       }
     }
 
-    // Delete the original template slide (the second slide)
-    if (templateSlideId) {
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests: [
-            {
-              deleteObject: {
-                objectId: templateSlideId,
-              },
-            },
-          ],
-        },
-      });
-    }
+    // Delete the original template slide (the second slide) is not needed anymore
+    // if (templateSlideId) {
+    //   await slides.presentations.batchUpdate({
+    //     presentationId,
+    //     requestBody: {
+    //       requests: [
+    //         {
+    //           deleteObject: {
+    //             objectId: templateSlideId,
+    //           },
+    //         },
+    //       ],
+    //     },
+    //   });
+    // }
 
     this.logger.log(
       `Propuesta ${presentationName} creada con éxito. ID: ${presentationId}`,

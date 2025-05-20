@@ -5,7 +5,7 @@ import { FileUploader } from "@/components/file-uploader"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { MediaList } from "@/components/media-list"
-import { Copy, FileText, Plus, Save, FileCheck, Upload } from "lucide-react"
+import { Copy, FileText, Plus, Save, FileCheck, Upload, AlertTriangle, Check } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import type { MediaFormData } from "@/app/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -49,8 +49,9 @@ export default function MediaPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [provider, setProvider] = useState<Proveedor | null>(null);
   const [showDialog, setShowDialog] = useState(false)
-  const [dialogStatus, setDialogStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [dialogStatus, setDialogStatus] = useState<'loading' | 'success' | 'error' | 'confirm'>('loading')
   const [progressValue, setProgressValue] = useState(0)
+  const [reviewedItems, setReviewedItems] = useState<Record<string, boolean>>({})
   const { toast } = useToast()
   const { providers = [], isLoadingProviders } = useProveedores();
 
@@ -160,6 +161,34 @@ export default function MediaPage() {
     setMediaItems(mediaItems.map((item) => (item.id === id ? { ...updatedData } : item)))
   }
 
+  const handleConfirmSave = () => {
+    // Check if all media items are confirmed
+    const allConfirmed = mediaItems.every(item => reviewedItems[item.id]);
+    
+    if (allConfirmed) {
+      // If all items are confirmed, save directly
+      handleSaveAll();
+    } else {
+      // If some items are not confirmed, show confirmation dialog
+      setDialogStatus('confirm');
+      setShowDialog(true);
+    }
+  }
+
+  const confirmAllAndSave = () => {
+    // Mark all items as reviewed
+    const allReviewed = mediaItems.reduce(
+      (acc, item) => ({ ...acc, [item.id]: true }),
+      {}
+    );
+    setReviewedItems(allReviewed);
+    
+    // Change dialog status to loading and save
+    setDialogStatus('loading');
+    setProgressValue(0);
+    handleSaveAll();
+  }
+
   const handleSaveAll = async () => {
     if (mediaItems.length === 0) {
       toast({
@@ -175,9 +204,11 @@ export default function MediaPage() {
     setDialogStatus('loading')
     setProgressValue(0)
 
+    let progressInterval: NodeJS.Timeout;
+
     try {
       // Start progress animation
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setProgressValue(prev => {
           if (prev >= 90) {
             clearInterval(progressInterval)
@@ -252,6 +283,7 @@ export default function MediaPage() {
       })
     } catch (error) {
       console.error("Error saving media data:", error)
+      if (progressInterval) clearInterval(progressInterval)
       setDialogStatus('error')
       toast({
         title: "Error",
@@ -346,11 +378,13 @@ export default function MediaPage() {
               {dialogStatus === 'loading' && "Guardando espacios..."}
               {dialogStatus === 'success' && "¡Espacios guardados exitosamente!"}
               {dialogStatus === 'error' && "Error al guardar espacios"}
+              {dialogStatus === 'confirm' && "Espacios no confirmados"}
             </DialogTitle>
             <DialogDescription>
               {dialogStatus === 'loading' && "Por favor espere mientras se guardan los espacios."}
               {dialogStatus === 'success' && "Los espacios han sido guardados y están listos para crear propuestas."}
               {dialogStatus === 'error' && "Ocurrió un error al guardar los espacios. Por favor intente nuevamente."}
+              {dialogStatus === 'confirm' && "Algunos espacios no han sido confirmados. ¿Desea confirmarlos todos y continuar?"}
             </DialogDescription>
           </DialogHeader>
 
@@ -379,6 +413,20 @@ export default function MediaPage() {
               <div className="flex flex-col items-center justify-center space-y-4">
                 <p className="text-center text-red-500">
                   No se pudieron guardar los espacios. Por favor intente nuevamente.
+                </p>
+              </div>
+            )}
+
+            {dialogStatus === 'confirm' && (
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="h-16 w-16 rounded-full bg-yellow-100 flex items-center justify-center">
+                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
+                </div>
+                <p className="text-center">
+                  {mediaItems.filter(item => !reviewedItems[item.id]).length} de {mediaItems.length} espacios no han sido confirmados.
+                </p>
+                <p className="text-center text-sm text-muted-foreground">
+                  Se recomienda confirmar todos los espacios antes de guardarlos para asegurar la calidad de los datos.
                 </p>
               </div>
             )}
@@ -418,6 +466,25 @@ export default function MediaPage() {
               >
                 Cerrar
               </Button>
+            )}
+
+            {dialogStatus === 'confirm' && (
+              <>
+                <Button 
+                  className="w-full sm:w-auto"
+                  onClick={confirmAllAndSave}
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Confirmar todos y guardar
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full sm:w-auto"
+                  onClick={() => setShowDialog(false)}
+                >
+                  Cancelar
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
@@ -493,7 +560,13 @@ export default function MediaPage() {
 
       {mediaItems.length > 0 && (
         <div className="mt-8">
-          <MediaList mediaItems={mediaItems} onUpdate={updateMedia} onRemove={removeMedia} />
+          <MediaList 
+            mediaItems={mediaItems} 
+            onUpdate={updateMedia} 
+            onRemove={removeMedia}
+            reviewedItems={reviewedItems}
+            setReviewedItems={setReviewedItems}
+          />
           {mediaItems.length > 0 && (
             <div className="mt-6 flex justify-end gap-4">
               <Button variant="outline" onClick={handleCopyAll}>
@@ -501,7 +574,7 @@ export default function MediaPage() {
                 Copiar todo al portapapeles
               </Button>
 
-              <Button onClick={handleSaveAll} disabled={isLoading}>
+              <Button onClick={handleConfirmSave} disabled={isLoading}>
                 {isLoading ? (
                   <>Guardando...</>
                 ) : (
