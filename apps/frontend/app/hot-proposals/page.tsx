@@ -428,16 +428,14 @@ export default function HotProposalsPage() {
                               </span>
                             </div>
                           )}
-                          {media.tarifa && (
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">
                                 Tarifa Espacio:
                               </span>
                               <span className="font-medium">
-                                ${media.tarifa.toLocaleString()}
+                                {media.tarifa ? (`${media.tarifa.toLocaleString()}`) : (`Sin especificar`)}
                               </span>
                             </div>
-                          )}
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">
                               Costo Instalación:

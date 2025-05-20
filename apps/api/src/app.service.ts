@@ -312,6 +312,7 @@ export class AppService {
         colonia: headers.indexOf('COLONIA'),
         codigoPostal: headers.indexOf('CÓDIGO POSTAL'),
         tarifa: headers.indexOf('TARIFA'),
+        impactos: headers.indexOf('IMPACTOS MES'),
       };
 
       // Filter rows by Zirkel keys
@@ -357,6 +358,7 @@ export class AppService {
           colonia: row[columnMap.colonia] || '',
           codigoPostal: row[columnMap.codigoPostal] || '',
           tarifa: row[columnMap.tarifa] || 0,
+          impactosMes: row[columnMap.impactos] || 0,
           latitud,
           longitud,
           imageUrl: `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3002'}/media/${row[columnMap.claveZirkel]}.jpeg`,
@@ -786,6 +788,7 @@ export class AppService {
         delegacion: headers.indexOf('DELEGACIÓN / MUNICIPIO'),
         colonia: headers.indexOf('COLONIA'),
         codigoPostal: headers.indexOf('CÓDIGO POSTAL'),
+        impactosMes: headers.indexOf('IMPACTOS MES'),
       };
 
       // Procesar cada medio
