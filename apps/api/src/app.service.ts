@@ -143,8 +143,8 @@ export class AppService {
       });
 
       const result = await this.genAI.models.generateContent({
-        model: 'gemini-2.0-flash',
-        // model: 'gemini-2.5-pro-preview-05-06',
+        //model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-pro',
         config: {
           responseMimeType: 'application/json',
         },
@@ -158,6 +158,7 @@ export class AppService {
       this.logger.log(
         `Gemini API usage ${response.usageMetadata?.totalTokenCount}`,
       );
+      //console.log(response.text!)
       const extractedData = JSON.parse(response.text!) as MediaDataExtraction[];
 
       let pdfDocument;

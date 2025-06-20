@@ -24,9 +24,10 @@ primary_region = 'gdl'
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
+  idle_timeout = "60m"
 
 [[vm]]
-  memory = '3gb'
+  memory = '4gb'
   cpu_kind = 'shared'
   cpus = 2
 

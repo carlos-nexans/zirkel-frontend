@@ -7,6 +7,9 @@ La base y altura se expresan en metros, utiliza el punto como separador decimal.
 Si es posible, infiere o extrae la ciudad y estado.
 Utiliza texto capitalizado, primera letra en mayúscula y resto en minúscula. Ej: "Ciudad de México"
 Si es posible, infiere o extrae la latitud y longitud. Utiliza el formato de punto flotante. Ej: 19.4323232
+Los string nunca deben contener comillas dobles, por ejemplo
+"direccion": "La Isla" BIEN
+"direccion": ""La Isla"" MAL
 
 type TipoMedio = 
     | 'Aeropuertos'
