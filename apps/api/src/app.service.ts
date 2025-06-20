@@ -605,30 +605,43 @@ export class AppService {
 
       // Add replacements for each field
       const replacements: any[] = [
-        { find: 'CLAVE', value: media.claveZirkel || 'Consultar' },
-        { find: 'CIUDAD', value: media.ciudad || 'Consultar' },
-        { find: 'DIRECCIÓN', value: media.direccion || 'Consultar' },
+        { find: 'CLAVE', value: media.claveZirkel || 'N/A' },
+        { find: 'CIUDAD', value: media.ciudad || 'N/A' },
+        { find: 'DIRECCIÓN', value: media.direccion || 'N/A' },
         {
           find: 'MEDIDA',
           value:
             media.base && media.altura
-              ? `${media.base}x${media.altura}`
-              : 'Consultar',
+              ? `${media.base.toFixed(2)}x${media.altura.toFixed(2)}`
+              : 'N/A',
         },
-        { find: 'TIPO', value: media.tipoMedio || 'Consultar' },
+        { find: 'TIPO', value: media.tipoMedio || 'N/A' },
         {
           find: 'COORDENADAS',
           value:
             media.latitud && media.longitud
               ? `${media.latitud}, ${media.longitud}`
-              : 'Consultar',
+              : 'N/A',
         },
-        { find: 'IMPACTOS', value: media.impactosMes || 'Consultar' },
+        { find: 'IMPACTOS', value: media.impactosMes || 'N/A' },
         {
           find: 'PRECIO',
           value: media.tarifa
             ? `$${media.tarifa.toLocaleString('es-MX')}`
             : 'Consultar',
+        },
+        //CARACTERISTICAS
+        {
+          find: 'CARACTERISTICAS',
+          value: media.caracteristica ? media.caracteristica : 'N/A',
+        },
+        {
+          find: 'MEDIO',
+          value: media.tipoMedio ? media.tipoMedio : '',
+        },
+        {
+          find: 'ESTADO',
+          value: media.estado ? media.estado : '',
         },
       ];
 
