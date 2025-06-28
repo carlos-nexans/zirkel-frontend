@@ -866,6 +866,7 @@ export class AppService {
         claveOriginalSitio: headers.indexOf('CLAVE ORIGINAL'),
         costo: headers.indexOf('COSTO'),
         costoInstalacion: headers.indexOf('COSTO DE INSTALACIÓN'),
+        tarifa: headers.indexOf('TARIFA'),
         tipoMedio: headers.indexOf('MEDIO'),
         estado: headers.indexOf('ESTADO '),
         ciudad: headers.indexOf('CIUDAD'),
@@ -882,6 +883,9 @@ export class AppService {
         codigoPostal: headers.indexOf('CÓDIGO POSTAL'),
         impactosMes: headers.indexOf('IMPACTOS MES'),
       };
+
+      // Track used rows during this batch operation to avoid conflicts
+      const usedRowIndices = new Set<number>();
 
       // Procesar cada medio
       for (const mediaData of mediaDataList) {
@@ -925,11 +929,15 @@ export class AppService {
           const existingRow = existingRows[existingRowIndex];
           const updatedRow = [...existingRow];
 
+          // Mark this row as used
+          usedRowIndices.add(existingRowIndex);
+
           // Actualizar solo los campos que vienen en mediaData
           Object.entries(mediaData).forEach(([key, value]) => {
             if (columnMap[key] !== undefined && value !== undefined) {
-              // Si no es latitud ni longitud, actualizar normalmente
-              if (key !== 'latitud' && key !== 'longitud') {
+              // Skip tarifa field - we'll handle it with a formula
+              // Si no es latitud ni longitud ni tarifa, actualizar normalmente
+              if (key !== 'latitud' && key !== 'longitud' && key !== 'tarifa') {
                 updatedRow[columnMap[key]] = value;
               }
             }
@@ -939,6 +947,15 @@ export class AppService {
           if (coordenadas) {
             updatedRow[columnMap.coordenadas] = coordenadas;
           }
+
+          // Set tarifa formula if costo column exists and we have a tarifa column
+          if (columnMap.costo !== -1 && columnMap.tarifa !== -1) {
+            const costoCellAddress = this.getColumnLetter(columnMap.costo + 1) + (existingRowIndex + 1);
+            updatedRow[columnMap.tarifa] = `=${costoCellAddress}*1.16`; // Example: add 16% tax
+          }
+
+          // Update our local existingRows to reflect the changes
+          existingRows[existingRowIndex] = [...updatedRow];
 
           // Actualizar la fila en el spreadsheet
           await sheets.spreadsheets.values.update({
@@ -956,7 +973,8 @@ export class AppService {
             if (
               columnMap[key] !== undefined &&
               key !== 'latitud' &&
-              key !== 'longitud'
+              key !== 'longitud' &&
+              key !== 'tarifa' // Skip tarifa field - we'll handle it with a formula
             ) {
               if (value !== undefined && value !== null && value !== '') {
                 newRow[columnMap[key]] = value;
@@ -969,13 +987,37 @@ export class AppService {
             newRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Buscar la primera fila vacía según la clave ZIRKEL
-          let emptyRowIndex = existingRows.findIndex(
-            (row, idx) => idx > 0 && (!row[columnMap.claveZirkel] || row[columnMap.claveZirkel] === ''),
-          );
+          // Buscar la primera fila vacía según la clave ZIRKEL que no haya sido usada en este batch
+          let emptyRowIndex = -1;
+          for (let idx = 1; idx < existingRows.length; idx++) {
+            const row = existingRows[idx];
+            if (
+              !usedRowIndices.has(idx) &&
+              (!row[columnMap.claveZirkel] || row[columnMap.claveZirkel] === '')
+            ) {
+              emptyRowIndex = idx;
+              break;
+            }
+          }
+          
+          // Si no encontramos una fila vacía, usar la siguiente posición después de todas las filas
           if (emptyRowIndex === -1) {
             emptyRowIndex = existingRows.length;
+            // Extend existingRows array to include this new row
+            existingRows.push(new Array(headers.length).fill(''));
           }
+
+          // Mark this row as used
+          usedRowIndices.add(emptyRowIndex);
+
+          // Set tarifa formula if costo column exists and we have a tarifa column
+          if (columnMap.costo !== -1 && columnMap.tarifa !== -1) {
+            const costoCellAddress = this.getColumnLetter(columnMap.costo + 1) + (emptyRowIndex + 1);
+            newRow[columnMap.tarifa] = `=${costoCellAddress}*1.16`; // Example: add 16% tax
+          }
+
+          // Update our local existingRows to reflect the new data for subsequent iterations
+          existingRows[emptyRowIndex] = [...newRow];
 
           await sheets.spreadsheets.values.update({
             spreadsheetId,
@@ -1111,6 +1153,20 @@ export class AppService {
       this.logger.error('Error finding best image:', error);
       return null;
     }
+  }
+
+  /**
+   * Convert column number to Excel column letter (1-based)
+   * e.g., 1 = A, 2 = B, 27 = AA, etc.
+   */
+  private getColumnLetter(columnNumber: number): string {
+    let result = '';
+    while (columnNumber > 0) {
+      columnNumber--;
+      result = String.fromCharCode(65 + (columnNumber % 26)) + result;
+      columnNumber = Math.floor(columnNumber / 26);
+    }
+    return result;
   }
 
   /**
