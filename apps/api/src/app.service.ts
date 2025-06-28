@@ -212,12 +212,17 @@ export class AppService {
       const sheets = google.sheets({ version: 'v4', auth });
       const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
 
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'PROVEEDORES!A:AA', // Get all columns from the PROVEEDORES sheet
-        valueRenderOption: 'UNFORMATTED_VALUE',
-        dateTimeRenderOption: 'FORMATTED_STRING',
-      });
+      const response = await this.retryWithBackoff(
+        () => sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'PROVEEDORES!A:AA', // Get all columns from the PROVEEDORES sheet
+          valueRenderOption: 'UNFORMATTED_VALUE',
+          dateTimeRenderOption: 'FORMATTED_STRING',
+        }),
+        5,
+        1000,
+        'Get proveedores data'
+      );
 
       const rows = response.data.values || [];
       const data = rows.slice(1);
@@ -282,11 +287,16 @@ export class AppService {
       const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
 
       // Get all data from the INVENTARIO sheet
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'INVENTARIO!A:Z',
-        valueRenderOption: 'UNFORMATTED_VALUE',
-      });
+      const response = await this.retryWithBackoff(
+        () => sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'INVENTARIO!A:Z',
+          valueRenderOption: 'UNFORMATTED_VALUE',
+        }),
+        5,
+        1000,
+        'Get media inventory data'
+      );
 
       const rows = response.data.values || [];
       const headers = rows[0] || [];
@@ -850,11 +860,16 @@ export class AppService {
       );
 
       // Primero obtenemos todos los datos actuales del spreadsheet
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'INVENTARIO!A:Z',
-        valueRenderOption: 'UNFORMATTED_VALUE',
-      });
+      const response = await this.retryWithBackoff(
+        () => sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'INVENTARIO!A:Z',
+          valueRenderOption: 'UNFORMATTED_VALUE',
+        }),
+        5,
+        1000,
+        'Get spreadsheet data'
+      );
 
       const existingRows = response.data.values || [];
       const headers = existingRows[0] || [];
@@ -866,7 +881,6 @@ export class AppService {
         claveOriginalSitio: headers.indexOf('CLAVE ORIGINAL'),
         costo: headers.indexOf('COSTO'),
         costoInstalacion: headers.indexOf('COSTO DE INSTALACIÓN'),
-        tarifa: headers.indexOf('TARIFA'),
         tipoMedio: headers.indexOf('MEDIO'),
         estado: headers.indexOf('ESTADO '),
         ciudad: headers.indexOf('CIUDAD'),
@@ -887,8 +901,69 @@ export class AppService {
       // Track used rows during this batch operation to avoid conflicts
       const usedRowIndices = new Set<number>();
 
+      // Find the first TARIFA column to determine safe update range
+      let firstTarifaColumn = headers.length; // Default to end of headers if no tarifa found
+      headers.forEach((header, index) => {
+        if (header?.toString().toUpperCase().includes('TARIFA') && index < firstTarifaColumn) {
+          firstTarifaColumn = index;
+        }
+      });
+      
+      const safeUpdateRange = firstTarifaColumn > 0 ? this.getColumnLetter(firstTarifaColumn) : 'Z';
+      this.logger.log(`Safe update range: A:${safeUpdateRange} (stopping before TARIFA columns at column ${firstTarifaColumn + 1})`);
+
+      // Check for duplicates in input data
+      const claveZirkelCounts = new Map<string, number>();
+      const duplicates = new Set<string>();
+      
+      mediaDataList.forEach((media, index) => {
+        const clave = media.claveZirkel;
+        if (clave) {
+          const count = claveZirkelCounts.get(clave) || 0;
+          claveZirkelCounts.set(clave, count + 1);
+          if (count > 0) {
+            duplicates.add(clave);
+          }
+        }
+      });
+
+      // Determine the list to process (deduplicated or original)
+      let processedMediaList = mediaDataList;
+
+      if (duplicates.size > 0) {
+        this.logger.warn(`⚠️  Found ${duplicates.size} duplicate claveZirkel values in input data:`);
+        Array.from(duplicates).forEach(clave => {
+          const count = claveZirkelCounts.get(clave);
+          this.logger.warn(`  - ${clave}: appears ${count} times`);
+        });
+        this.logger.warn(`This will result in ${mediaDataList.length - duplicates.size} actual spreadsheet rows instead of ${mediaDataList.length}`);
+        
+        // Deduplicate the input data (keep last occurrence)
+        const seenClaves = new Set<string>();
+        const deduplicatedList: MediaData[] = [];
+        
+        // Process in reverse to keep the last occurrence of each duplicate
+        for (let i = mediaDataList.length - 1; i >= 0; i--) {
+          const media = mediaDataList[i];
+          const clave = media.claveZirkel;
+          if (!clave || !seenClaves.has(clave)) {
+            if (clave) seenClaves.add(clave);
+            deduplicatedList.unshift(media);
+          }
+        }
+        
+        this.logger.log(`🔧 Deduplicated: ${mediaDataList.length} → ${deduplicatedList.length} items (keeping last occurrence of duplicates)`);
+        processedMediaList = deduplicatedList;
+      }
+
       // Procesar cada medio
-      for (const mediaData of mediaDataList) {
+      this.logger.log(`Processing ${processedMediaList.length} media items for spreadsheet updates...`);
+      
+      for (let i = 0; i < processedMediaList.length; i++) {
+        const mediaData = processedMediaList[i];
+        const isDuplicate = duplicates.has(mediaData.claveZirkel || '');
+        const duplicateMarker = isDuplicate ? ' 🔄 [DUPLICATE]' : '';
+        this.logger.log(`Processing media ${i + 1}/${processedMediaList.length}: ${mediaData.claveZirkel || 'New item'}${duplicateMarker}`);
         // Remove image handling since it's now done in the controller
 
         // Crear el string de coordenadas combinando latitud y longitud
@@ -935,9 +1010,8 @@ export class AppService {
           // Actualizar solo los campos que vienen en mediaData
           Object.entries(mediaData).forEach(([key, value]) => {
             if (columnMap[key] !== undefined && value !== undefined) {
-              // Skip tarifa field - we'll handle it with a formula
-              // Si no es latitud ni longitud ni tarifa, actualizar normalmente
-              if (key !== 'latitud' && key !== 'longitud' && key !== 'tarifa') {
+              // Skip coordinates fields
+              if (key !== 'latitud' && key !== 'longitud') {
                 updatedRow[columnMap[key]] = value;
               }
             }
@@ -948,34 +1022,34 @@ export class AppService {
             updatedRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Set tarifa formula if costo column exists and we have a tarifa column
-          if (columnMap.costo !== -1 && columnMap.tarifa !== -1) {
-            const costoCellAddress = this.getColumnLetter(columnMap.costo + 1) + (existingRowIndex + 1);
-            updatedRow[columnMap.tarifa] = `=${costoCellAddress}*1.16`; // Example: add 16% tax
-          }
-
           // Update our local existingRows to reflect the changes
           existingRows[existingRowIndex] = [...updatedRow];
 
-          // Actualizar la fila en el spreadsheet
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `INVENTARIO!A${existingRowIndex + 1}:Z${existingRowIndex + 1}`,
-            valueInputOption: 'USER_ENTERED',
-            requestBody: {
-              values: [updatedRow],
-            },
-          });
+          // Update the row but only up to the column before TARIFA
+          await this.retryWithBackoff(
+            () => sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `INVENTARIO!A${existingRowIndex + 1}:${safeUpdateRange}${existingRowIndex + 1}`,
+              valueInputOption: 'USER_ENTERED',
+              requestBody: {
+                values: [updatedRow.slice(0, firstTarifaColumn)],
+              },
+            }),
+            5,
+            1000,
+            `Update existing row ${existingRowIndex + 1} for ${mediaData.claveZirkel}`
+          );
+
+          // Add a small delay between operations to reduce API pressure
+          if (i < processedMediaList.length - 1) {
+            await this.delay(300);
+            this.logger.log(`Completed media ${i + 1}/${processedMediaList.length}, continuing...`);
+          }
         } else {
           // Crear nuevo medio
           const newRow = new Array(headers.length).fill('');
           Object.entries(mediaData).forEach(([key, value]) => {
-            if (
-              columnMap[key] !== undefined &&
-              key !== 'latitud' &&
-              key !== 'longitud' &&
-              key !== 'tarifa' // Skip tarifa field - we'll handle it with a formula
-            ) {
+            if (columnMap[key] !== undefined && key !== 'latitud' && key !== 'longitud') {
               if (value !== undefined && value !== null && value !== '') {
                 newRow[columnMap[key]] = value;
               }
@@ -1010,23 +1084,29 @@ export class AppService {
           // Mark this row as used
           usedRowIndices.add(emptyRowIndex);
 
-          // Set tarifa formula if costo column exists and we have a tarifa column
-          if (columnMap.costo !== -1 && columnMap.tarifa !== -1) {
-            const costoCellAddress = this.getColumnLetter(columnMap.costo + 1) + (emptyRowIndex + 1);
-            newRow[columnMap.tarifa] = `=${costoCellAddress}*1.16`; // Example: add 16% tax
-          }
-
           // Update our local existingRows to reflect the new data for subsequent iterations
           existingRows[emptyRowIndex] = [...newRow];
 
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `INVENTARIO!A${emptyRowIndex + 1}:Z${emptyRowIndex + 1}`,
-            valueInputOption: 'USER_ENTERED',
-            requestBody: {
-              values: [newRow],
-            },
-          });
+          // Insert new row but only up to the column before TARIFA
+          await this.retryWithBackoff(
+            () => sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `INVENTARIO!A${emptyRowIndex + 1}:${safeUpdateRange}${emptyRowIndex + 1}`,
+              valueInputOption: 'USER_ENTERED',
+              requestBody: {
+                values: [newRow.slice(0, firstTarifaColumn)],
+              },
+            }),
+            5,
+            1000,
+            `Insert new row ${emptyRowIndex + 1} for ${mediaData.claveZirkel}`
+          );
+
+          // Add a small delay between operations to reduce API pressure
+          if (i < mediaDataList.length - 1) {
+            await this.delay(300);
+            this.logger.log(`Completed media ${i + 1}/${mediaDataList.length}, continuing...`);
+          }
         }
       }
 
