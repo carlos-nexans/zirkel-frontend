@@ -1,6 +1,7 @@
 export const extractPrompt = `
 Extrae la siguiente información de este documento.
 Si no encuentras algún campo, usa una cadena vacía.
+Si no encuentras la clave del medio no la inventes ni la incluyas en el JSON.
 El documento describe un conjunto de medios publicitarios.
 Si encuentras un formato como "MEDIDAS: 13.00 X 4.20 MTS.", extrae el primer número como base y el segundo como altura
 La base y altura se expresan en metros, utiliza el punto como separador decimal. Si no hay decimales, devuelvelo como entero en una cadena Ej: "13"

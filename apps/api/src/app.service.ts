@@ -212,12 +212,17 @@ export class AppService {
       const sheets = google.sheets({ version: 'v4', auth });
       const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
 
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'PROVEEDORES!A:AA', // Get all columns from the PROVEEDORES sheet
-        valueRenderOption: 'UNFORMATTED_VALUE',
-        dateTimeRenderOption: 'FORMATTED_STRING',
-      });
+      const response = await this.retryWithBackoff(
+        () => sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'PROVEEDORES!A:AA', // Get all columns from the PROVEEDORES sheet
+          valueRenderOption: 'UNFORMATTED_VALUE',
+          dateTimeRenderOption: 'FORMATTED_STRING',
+        }),
+        5,
+        1000,
+        'Get proveedores data'
+      );
 
       const rows = response.data.values || [];
       const data = rows.slice(1);
@@ -282,11 +287,16 @@ export class AppService {
       const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
 
       // Get all data from the INVENTARIO sheet
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'INVENTARIO!A:Z',
-        valueRenderOption: 'UNFORMATTED_VALUE',
-      });
+      const response = await this.retryWithBackoff(
+        () => sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'INVENTARIO!A:Z',
+          valueRenderOption: 'UNFORMATTED_VALUE',
+        }),
+        5,
+        1000,
+        'Get media inventory data'
+      );
 
       const rows = response.data.values || [];
       const headers = rows[0] || [];
@@ -399,6 +409,9 @@ export class AppService {
       throw new Error('No media found with the provided Zirkel keys');
     }
 
+    // Ordenar medios por ciudad alfabeticamente antes de crear las slides
+    mediaList.sort((a, b) => a.ciudad.localeCompare(b.ciudad));
+
     // Get credentials for Google API
     const credentials = Buffer.from(
       process.env.GOOGLE_SHEETS_CREDENTIALS || '',
@@ -444,14 +457,19 @@ export class AppService {
       );
     }
 
-    const copyResponse = await drive.files.copy({
-      fileId: templateId,
-      requestBody: {
-        name: presentationName,
-        parents: [folderId],
-      },
-      supportsAllDrives: true,
-    });
+    const copyResponse = await this.retryWithBackoff(
+      () => drive.files.copy({
+        fileId: templateId,
+        requestBody: {
+          name: presentationName,
+          parents: [folderId],
+        },
+        supportsAllDrives: true,
+      }),
+      5,
+      1000,
+      'Drive file copy'
+    );
 
     const presentationId = copyResponse.data.id;
     if (!presentationId) {
@@ -461,9 +479,14 @@ export class AppService {
     this.logger.log(`Created presentation with ID: ${presentationId}`);
 
     // 3. Get the presentation to understand its structure
-    let presentation = await slides.presentations.get({
-      presentationId,
-    });
+    let presentation = await this.retryWithBackoff(
+      () => slides.presentations.get({
+        presentationId,
+      }),
+      5,
+      1000,
+      'Get presentation structure'
+    );
 
     // Find the first and second slides
     if (!presentation.data.slides || presentation.data.slides.length < 2) {
@@ -513,23 +536,38 @@ export class AppService {
 
     // Apply the duplication requests
     if (requests.length > 0) {
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests,
-        },
-      });
+      await this.retryWithBackoff(
+        () => slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests,
+          },
+        }),
+        5,
+        1000,
+        'Batch update for slide duplication'
+      );
     }
 
     // Fetch the presentation again to get the updated slides
-    presentation = await slides.presentations.get({
-      presentationId,
-    });
+    presentation = await this.retryWithBackoff(
+      () => slides.presentations.get({
+        presentationId,
+      }),
+      5,
+      1000,
+      'Get updated presentation'
+    );
 
     // Now, update each slide with the media data
+    this.logger.log(`Processing ${mediaList.length} media items for slides...`);
+    
     for (let i = 0; i < mediaList.length; i++) {
       const media = mediaList[i];
       const currentSlideId = presentation.data.slides?.[i + 1]?.objectId;
+      
+      this.logger.log(`Processing media ${i + 1}/${mediaList.length}: ${media.claveZirkel}`);
+      
       if (!currentSlideId) {
         this.logger.warn(
           `Could not find slide ID for media ${media.claveZirkel}`,
@@ -538,10 +576,15 @@ export class AppService {
       }
 
       // Get the current slide to find the table
-      const slideResponse = await slides.presentations.get({
-        presentationId,
-        fields: 'slides',
-      });
+      const slideResponse = await this.retryWithBackoff(
+        () => slides.presentations.get({
+          presentationId,
+          fields: 'slides',
+        }),
+        5,
+        1000,
+        `Get slide ${i + 1} details`
+      );
 
       const currentSlide = slideResponse.data.slides?.find(
         (slide) => slide.objectId === currentSlideId,
@@ -607,12 +650,18 @@ export class AppService {
       const replacements: any[] = [
         { find: 'CLAVE', value: media.claveZirkel || 'N/A' },
         { find: 'CIUDAD', value: media.ciudad || 'N/A' },
-        { find: 'DIRECCIÓN', value: media.direccion || 'N/A' },
+        {
+          find: 'DIRECCIÓN',
+          value:
+            media.direccion && media.direccion.length > 40
+              ? `${media.direccion.substring(0, 40)}...`
+              : media.direccion || 'N/A',
+        },
         {
           find: 'MEDIDA',
           value:
             media.base && media.altura
-              ? `${media.base.toFixed(2)}x${media.altura.toFixed(2)}`
+              ? `${media.base.toFixed(2)} x ${media.altura.toFixed(2)}`
               : 'N/A',
         },
         { find: 'TIPO', value: media.tipoMedio || 'N/A' },
@@ -683,12 +732,26 @@ export class AppService {
       ];
 
       // Apply all updates
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests,
-        },
-      });
+      await this.retryWithBackoff(
+        () => slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests,
+          },
+        }),
+        5,
+        1000,
+        `Update slide ${i + 1} content`
+      );
+
+      // Add progressive delay between each media processing to reduce API pressure
+      // Longer delays for larger batches to be more conservative
+      if (i < mediaList.length - 1) {
+        const baseDelay = 500;
+        const progressiveDelay = mediaList.length > 10 ? 200 : 0;
+        await this.delay(baseDelay + progressiveDelay);
+        this.logger.log(`Completed media ${i + 1}/${mediaList.length}, continuing...`);
+      }
 
       // TODO: Handle row deletion for empty values if needed
       // This would require more complex logic to identify and delete specific table rows
@@ -734,12 +797,17 @@ export class AppService {
         },
       ];
 
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests: offScreenTextRequests,
-        },
-      });
+      await this.retryWithBackoff(
+        () => slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests: offScreenTextRequests,
+          },
+        }),
+        5,
+        1000,
+        `Add off-screen data for slide ${i + 1}`
+      );
     }
 
     // Delete the original template slide (the second slide) is not needed anymore
@@ -785,12 +853,23 @@ export class AppService {
       const sheets = google.sheets({ version: 'v4', auth });
       const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
 
+      // Obtener prefijos de proveedores para generar claves nuevas
+      const proveedores = await this.getProveedores();
+      const proveedorMap = new Map(
+        proveedores.map((p) => [p.proveedor.toLowerCase(), p.clave]),
+      );
+
       // Primero obtenemos todos los datos actuales del spreadsheet
-      const response = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: 'INVENTARIO!A:Z',
-        valueRenderOption: 'UNFORMATTED_VALUE',
-      });
+      const response = await this.retryWithBackoff(
+        () => sheets.spreadsheets.values.get({
+          spreadsheetId,
+          range: 'INVENTARIO!A:Z',
+          valueRenderOption: 'UNFORMATTED_VALUE',
+        }),
+        5,
+        1000,
+        'Get spreadsheet data'
+      );
 
       const existingRows = response.data.values || [];
       const headers = existingRows[0] || [];
@@ -819,8 +898,72 @@ export class AppService {
         impactosMes: headers.indexOf('IMPACTOS MES'),
       };
 
+      // Track used rows during this batch operation to avoid conflicts
+      const usedRowIndices = new Set<number>();
+
+      // Find the first TARIFA column to determine safe update range
+      let firstTarifaColumn = headers.length; // Default to end of headers if no tarifa found
+      headers.forEach((header, index) => {
+        if (header?.toString().toUpperCase().includes('TARIFA') && index < firstTarifaColumn) {
+          firstTarifaColumn = index;
+        }
+      });
+      
+      const safeUpdateRange = firstTarifaColumn > 0 ? this.getColumnLetter(firstTarifaColumn) : 'Z';
+      this.logger.log(`Safe update range: A:${safeUpdateRange} (stopping before TARIFA columns at column ${firstTarifaColumn + 1})`);
+
+      // Check for duplicates in input data
+      const claveZirkelCounts = new Map<string, number>();
+      const duplicates = new Set<string>();
+      
+      mediaDataList.forEach((media, index) => {
+        const clave = media.claveZirkel;
+        if (clave) {
+          const count = claveZirkelCounts.get(clave) || 0;
+          claveZirkelCounts.set(clave, count + 1);
+          if (count > 0) {
+            duplicates.add(clave);
+          }
+        }
+      });
+
+      // Determine the list to process (deduplicated or original)
+      let processedMediaList = mediaDataList;
+
+      if (duplicates.size > 0) {
+        this.logger.warn(`⚠️  Found ${duplicates.size} duplicate claveZirkel values in input data:`);
+        Array.from(duplicates).forEach(clave => {
+          const count = claveZirkelCounts.get(clave);
+          this.logger.warn(`  - ${clave}: appears ${count} times`);
+        });
+        this.logger.warn(`This will result in ${mediaDataList.length - duplicates.size} actual spreadsheet rows instead of ${mediaDataList.length}`);
+        
+        // Deduplicate the input data (keep last occurrence)
+        const seenClaves = new Set<string>();
+        const deduplicatedList: MediaData[] = [];
+        
+        // Process in reverse to keep the last occurrence of each duplicate
+        for (let i = mediaDataList.length - 1; i >= 0; i--) {
+          const media = mediaDataList[i];
+          const clave = media.claveZirkel;
+          if (!clave || !seenClaves.has(clave)) {
+            if (clave) seenClaves.add(clave);
+            deduplicatedList.unshift(media);
+          }
+        }
+        
+        this.logger.log(`🔧 Deduplicated: ${mediaDataList.length} → ${deduplicatedList.length} items (keeping last occurrence of duplicates)`);
+        processedMediaList = deduplicatedList;
+      }
+
       // Procesar cada medio
-      for (const mediaData of mediaDataList) {
+      this.logger.log(`Processing ${processedMediaList.length} media items for spreadsheet updates...`);
+      
+      for (let i = 0; i < processedMediaList.length; i++) {
+        const mediaData = processedMediaList[i];
+        const isDuplicate = duplicates.has(mediaData.claveZirkel || '');
+        const duplicateMarker = isDuplicate ? ' 🔄 [DUPLICATE]' : '';
+        this.logger.log(`Processing media ${i + 1}/${processedMediaList.length}: ${mediaData.claveZirkel || 'New item'}${duplicateMarker}`);
         // Remove image handling since it's now done in the controller
 
         // Crear el string de coordenadas combinando latitud y longitud
@@ -828,6 +971,28 @@ export class AppService {
           mediaData.latitud && mediaData.longitud
             ? `${mediaData.latitud}, ${mediaData.longitud}`
             : '';
+
+        // Si no tenemos clave, intentar generar una basada en el proveedor
+        if (!mediaData.claveZirkel) {
+          const prefijo = proveedorMap.get(mediaData.proveedor.toLowerCase());
+          if (prefijo) {
+            const prefixWithZm = `ZM${prefijo}`;
+            let maxNum = 0;
+            for (const row of existingRows.slice(1)) {
+              const key = row[columnMap.claveZirkel];
+              if (typeof key === 'string' && key.startsWith(prefixWithZm)) {
+                const match = key.match(/-(\d+)$/);
+                if (match) {
+                  const num = parseInt(match[1], 10);
+                  if (!isNaN(num) && num > maxNum) {
+                    maxNum = num;
+                  }
+                }
+              }
+            }
+            mediaData.claveZirkel = `${prefixWithZm}-${maxNum + 1}`;
+          }
+        }
 
         // Buscar si el medio ya existe
         const existingRowIndex = existingRows.findIndex(
@@ -839,10 +1004,13 @@ export class AppService {
           const existingRow = existingRows[existingRowIndex];
           const updatedRow = [...existingRow];
 
+          // Mark this row as used
+          usedRowIndices.add(existingRowIndex);
+
           // Actualizar solo los campos que vienen en mediaData
           Object.entries(mediaData).forEach(([key, value]) => {
             if (columnMap[key] !== undefined && value !== undefined) {
-              // Si no es latitud ni longitud, actualizar normalmente
+              // Skip coordinates fields
               if (key !== 'latitud' && key !== 'longitud') {
                 updatedRow[columnMap[key]] = value;
               }
@@ -854,25 +1022,37 @@ export class AppService {
             updatedRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Actualizar la fila en el spreadsheet
-          await sheets.spreadsheets.values.update({
-            spreadsheetId,
-            range: `INVENTARIO!A${existingRowIndex + 1}:Z${existingRowIndex + 1}`,
-            valueInputOption: 'RAW',
-            requestBody: {
-              values: [updatedRow],
-            },
-          });
+          // Update our local existingRows to reflect the changes
+          existingRows[existingRowIndex] = [...updatedRow];
+
+          // Update the row but only up to the column before TARIFA
+          await this.retryWithBackoff(
+            () => sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `INVENTARIO!A${existingRowIndex + 1}:${safeUpdateRange}${existingRowIndex + 1}`,
+              valueInputOption: 'USER_ENTERED',
+              requestBody: {
+                values: [updatedRow.slice(0, firstTarifaColumn)],
+              },
+            }),
+            5,
+            1000,
+            `Update existing row ${existingRowIndex + 1} for ${mediaData.claveZirkel}`
+          );
+
+          // Add a small delay between operations to reduce API pressure
+          if (i < processedMediaList.length - 1) {
+            await this.delay(300);
+            this.logger.log(`Completed media ${i + 1}/${processedMediaList.length}, continuing...`);
+          }
         } else {
           // Crear nuevo medio
           const newRow = new Array(headers.length).fill('');
           Object.entries(mediaData).forEach(([key, value]) => {
-            if (
-              columnMap[key] !== undefined &&
-              key !== 'latitud' &&
-              key !== 'longitud'
-            ) {
-              newRow[columnMap[key]] = value;
+            if (columnMap[key] !== undefined && key !== 'latitud' && key !== 'longitud') {
+              if (value !== undefined && value !== null && value !== '') {
+                newRow[columnMap[key]] = value;
+              }
             }
           });
 
@@ -881,16 +1061,52 @@ export class AppService {
             newRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Agregar la nueva fila al final del spreadsheet
-          await sheets.spreadsheets.values.append({
-            spreadsheetId,
-            range: 'INVENTARIO!A:Z',
-            valueInputOption: 'RAW',
-            insertDataOption: 'INSERT_ROWS',
-            requestBody: {
-              values: [newRow],
-            },
-          });
+          // Buscar la primera fila vacía según la clave ZIRKEL que no haya sido usada en este batch
+          let emptyRowIndex = -1;
+          for (let idx = 1; idx < existingRows.length; idx++) {
+            const row = existingRows[idx];
+            if (
+              !usedRowIndices.has(idx) &&
+              (!row[columnMap.claveZirkel] || row[columnMap.claveZirkel] === '')
+            ) {
+              emptyRowIndex = idx;
+              break;
+            }
+          }
+          
+          // Si no encontramos una fila vacía, usar la siguiente posición después de todas las filas
+          if (emptyRowIndex === -1) {
+            emptyRowIndex = existingRows.length;
+            // Extend existingRows array to include this new row
+            existingRows.push(new Array(headers.length).fill(''));
+          }
+
+          // Mark this row as used
+          usedRowIndices.add(emptyRowIndex);
+
+          // Update our local existingRows to reflect the new data for subsequent iterations
+          existingRows[emptyRowIndex] = [...newRow];
+
+          // Insert new row but only up to the column before TARIFA
+          await this.retryWithBackoff(
+            () => sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: `INVENTARIO!A${emptyRowIndex + 1}:${safeUpdateRange}${emptyRowIndex + 1}`,
+              valueInputOption: 'USER_ENTERED',
+              requestBody: {
+                values: [newRow.slice(0, firstTarifaColumn)],
+              },
+            }),
+            5,
+            1000,
+            `Insert new row ${emptyRowIndex + 1} for ${mediaData.claveZirkel}`
+          );
+
+          // Add a small delay between operations to reduce API pressure
+          if (i < mediaDataList.length - 1) {
+            await this.delay(300);
+            this.logger.log(`Completed media ${i + 1}/${mediaDataList.length}, continuing...`);
+          }
         }
       }
 
@@ -1017,5 +1233,64 @@ export class AppService {
       this.logger.error('Error finding best image:', error);
       return null;
     }
+  }
+
+  /**
+   * Convert column number to Excel column letter (1-based)
+   * e.g., 1 = A, 2 = B, 27 = AA, etc.
+   */
+  private getColumnLetter(columnNumber: number): string {
+    let result = '';
+    while (columnNumber > 0) {
+      columnNumber--;
+      result = String.fromCharCode(65 + (columnNumber % 26)) + result;
+      columnNumber = Math.floor(columnNumber / 26);
+    }
+    return result;
+  }
+
+  /**
+   * Utility function to add delay between API calls
+   */
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Retry function with exponential backoff for Google API calls
+   */
+  private async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 5,
+    baseDelay: number = 1000,
+    operationName: string = 'API call'
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        const isRateLimitError = 
+          error?.message?.includes('write requests per minute per user exceeded') ||
+          error?.message?.includes('rate limit') ||
+          error?.message?.includes('quota exceeded') ||
+          error?.status === 429 ||
+          error?.code === 429;
+
+        if (isRateLimitError && attempt < maxRetries) {
+          const delayMs = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+          this.logger.warn(
+            `${operationName} rate limited (attempt ${attempt}/${maxRetries}). ` +
+            `Retrying in ${Math.round(delayMs)}ms...`
+          );
+          await this.delay(delayMs);
+          continue;
+        }
+
+        // If it's not a rate limit error or we've exhausted retries, throw the error
+        this.logger.error(`${operationName} failed after ${attempt} attempts:`, error?.message);
+        throw error;
+      }
+    }
+    throw new Error(`${operationName} failed after ${maxRetries} attempts`);
   }
 }

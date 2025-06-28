@@ -78,8 +78,7 @@ export default function MediaPage() {
 
       const transformedItems: MediaFormData[] = mediaItems.map((item, index) => ({
         id: Math.random().toString(36).toString(),
-        // TODO: manejar casos sin clave!
-        claveZirkel: `ZM${provider!.clave}${item.clave || ''}`,
+        claveZirkel: item.clave ? `ZM${provider!.clave}${item.clave}` : '',
         claveOriginalSitio: item.clave || '',
         costo: item.costo,
         costoInstalacion: item.costoInstalacion,
