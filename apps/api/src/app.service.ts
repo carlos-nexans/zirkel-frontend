@@ -399,6 +399,9 @@ export class AppService {
       throw new Error('No media found with the provided Zirkel keys');
     }
 
+    // Ordenar medios por ciudad alfabeticamente antes de crear las slides
+    mediaList.sort((a, b) => a.ciudad.localeCompare(b.ciudad));
+
     // Get credentials for Google API
     const credentials = Buffer.from(
       process.env.GOOGLE_SHEETS_CREDENTIALS || '',
@@ -607,12 +610,18 @@ export class AppService {
       const replacements: any[] = [
         { find: 'CLAVE', value: media.claveZirkel || 'N/A' },
         { find: 'CIUDAD', value: media.ciudad || 'N/A' },
-        { find: 'DIRECCIÓN', value: media.direccion || 'N/A' },
+        {
+          find: 'DIRECCIÓN',
+          value:
+            media.direccion && media.direccion.length > 40
+              ? media.direccion.substring(0, 40)
+              : media.direccion || 'N/A',
+        },
         {
           find: 'MEDIDA',
           value:
             media.base && media.altura
-              ? `${media.base.toFixed(2)}x${media.altura.toFixed(2)}`
+              ? `${media.base.toFixed(2)} x ${media.altura.toFixed(2)}`
               : 'N/A',
         },
         { find: 'TIPO', value: media.tipoMedio || 'N/A' },
@@ -785,6 +794,12 @@ export class AppService {
       const sheets = google.sheets({ version: 'v4', auth });
       const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
 
+      // Obtener prefijos de proveedores para generar claves nuevas
+      const proveedores = await this.getProveedores();
+      const proveedorMap = new Map(
+        proveedores.map((p) => [p.proveedor.toLowerCase(), p.clave]),
+      );
+
       // Primero obtenemos todos los datos actuales del spreadsheet
       const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
@@ -829,6 +844,28 @@ export class AppService {
             ? `${mediaData.latitud}, ${mediaData.longitud}`
             : '';
 
+        // Si no tenemos clave, intentar generar una basada en el proveedor
+        if (!mediaData.claveZirkel) {
+          const prefijo = proveedorMap.get(mediaData.proveedor.toLowerCase());
+          if (prefijo) {
+            const prefixWithZm = `ZM${prefijo}`;
+            let maxNum = 0;
+            for (const row of existingRows.slice(1)) {
+              const key = row[columnMap.claveZirkel];
+              if (typeof key === 'string' && key.startsWith(prefixWithZm)) {
+                const match = key.match(/-(\d+)$/);
+                if (match) {
+                  const num = parseInt(match[1], 10);
+                  if (!isNaN(num) && num > maxNum) {
+                    maxNum = num;
+                  }
+                }
+              }
+            }
+            mediaData.claveZirkel = `${prefixWithZm}-${maxNum + 1}`;
+          }
+        }
+
         // Buscar si el medio ya existe
         const existingRowIndex = existingRows.findIndex(
           (row) => row[columnMap.claveZirkel] === mediaData.claveZirkel,
@@ -858,7 +895,7 @@ export class AppService {
           await sheets.spreadsheets.values.update({
             spreadsheetId,
             range: `INVENTARIO!A${existingRowIndex + 1}:Z${existingRowIndex + 1}`,
-            valueInputOption: 'RAW',
+            valueInputOption: 'USER_ENTERED',
             requestBody: {
               values: [updatedRow],
             },
@@ -872,7 +909,9 @@ export class AppService {
               key !== 'latitud' &&
               key !== 'longitud'
             ) {
-              newRow[columnMap[key]] = value;
+              if (value !== undefined && value !== null && value !== '') {
+                newRow[columnMap[key]] = value;
+              }
             }
           });
 
@@ -881,12 +920,18 @@ export class AppService {
             newRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Agregar la nueva fila al final del spreadsheet
-          await sheets.spreadsheets.values.append({
+          // Buscar la primera fila vacía según la clave ZIRKEL
+          let emptyRowIndex = existingRows.findIndex(
+            (row, idx) => idx > 0 && (!row[columnMap.claveZirkel] || row[columnMap.claveZirkel] === ''),
+          );
+          if (emptyRowIndex === -1) {
+            emptyRowIndex = existingRows.length;
+          }
+
+          await sheets.spreadsheets.values.update({
             spreadsheetId,
-            range: 'INVENTARIO!A:Z',
-            valueInputOption: 'RAW',
-            insertDataOption: 'INSERT_ROWS',
+            range: `INVENTARIO!A${emptyRowIndex + 1}:Z${emptyRowIndex + 1}`,
+            valueInputOption: 'USER_ENTERED',
             requestBody: {
               values: [newRow],
             },
