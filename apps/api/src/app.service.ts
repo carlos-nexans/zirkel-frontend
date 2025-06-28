@@ -447,14 +447,19 @@ export class AppService {
       );
     }
 
-    const copyResponse = await drive.files.copy({
-      fileId: templateId,
-      requestBody: {
-        name: presentationName,
-        parents: [folderId],
-      },
-      supportsAllDrives: true,
-    });
+    const copyResponse = await this.retryWithBackoff(
+      () => drive.files.copy({
+        fileId: templateId,
+        requestBody: {
+          name: presentationName,
+          parents: [folderId],
+        },
+        supportsAllDrives: true,
+      }),
+      5,
+      1000,
+      'Drive file copy'
+    );
 
     const presentationId = copyResponse.data.id;
     if (!presentationId) {
@@ -464,9 +469,14 @@ export class AppService {
     this.logger.log(`Created presentation with ID: ${presentationId}`);
 
     // 3. Get the presentation to understand its structure
-    let presentation = await slides.presentations.get({
-      presentationId,
-    });
+    let presentation = await this.retryWithBackoff(
+      () => slides.presentations.get({
+        presentationId,
+      }),
+      5,
+      1000,
+      'Get presentation structure'
+    );
 
     // Find the first and second slides
     if (!presentation.data.slides || presentation.data.slides.length < 2) {
@@ -516,23 +526,38 @@ export class AppService {
 
     // Apply the duplication requests
     if (requests.length > 0) {
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests,
-        },
-      });
+      await this.retryWithBackoff(
+        () => slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests,
+          },
+        }),
+        5,
+        1000,
+        'Batch update for slide duplication'
+      );
     }
 
     // Fetch the presentation again to get the updated slides
-    presentation = await slides.presentations.get({
-      presentationId,
-    });
+    presentation = await this.retryWithBackoff(
+      () => slides.presentations.get({
+        presentationId,
+      }),
+      5,
+      1000,
+      'Get updated presentation'
+    );
 
     // Now, update each slide with the media data
+    this.logger.log(`Processing ${mediaList.length} media items for slides...`);
+    
     for (let i = 0; i < mediaList.length; i++) {
       const media = mediaList[i];
       const currentSlideId = presentation.data.slides?.[i + 1]?.objectId;
+      
+      this.logger.log(`Processing media ${i + 1}/${mediaList.length}: ${media.claveZirkel}`);
+      
       if (!currentSlideId) {
         this.logger.warn(
           `Could not find slide ID for media ${media.claveZirkel}`,
@@ -541,10 +566,15 @@ export class AppService {
       }
 
       // Get the current slide to find the table
-      const slideResponse = await slides.presentations.get({
-        presentationId,
-        fields: 'slides',
-      });
+      const slideResponse = await this.retryWithBackoff(
+        () => slides.presentations.get({
+          presentationId,
+          fields: 'slides',
+        }),
+        5,
+        1000,
+        `Get slide ${i + 1} details`
+      );
 
       const currentSlide = slideResponse.data.slides?.find(
         (slide) => slide.objectId === currentSlideId,
@@ -614,7 +644,7 @@ export class AppService {
           find: 'DIRECCIÓN',
           value:
             media.direccion && media.direccion.length > 40
-              ? media.direccion.substring(0, 40)
+              ? `${media.direccion.substring(0, 40)}...`
               : media.direccion || 'N/A',
         },
         {
@@ -692,12 +722,26 @@ export class AppService {
       ];
 
       // Apply all updates
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests,
-        },
-      });
+      await this.retryWithBackoff(
+        () => slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests,
+          },
+        }),
+        5,
+        1000,
+        `Update slide ${i + 1} content`
+      );
+
+      // Add progressive delay between each media processing to reduce API pressure
+      // Longer delays for larger batches to be more conservative
+      if (i < mediaList.length - 1) {
+        const baseDelay = 500;
+        const progressiveDelay = mediaList.length > 10 ? 200 : 0;
+        await this.delay(baseDelay + progressiveDelay);
+        this.logger.log(`Completed media ${i + 1}/${mediaList.length}, continuing...`);
+      }
 
       // TODO: Handle row deletion for empty values if needed
       // This would require more complex logic to identify and delete specific table rows
@@ -743,12 +787,17 @@ export class AppService {
         },
       ];
 
-      await slides.presentations.batchUpdate({
-        presentationId,
-        requestBody: {
-          requests: offScreenTextRequests,
-        },
-      });
+      await this.retryWithBackoff(
+        () => slides.presentations.batchUpdate({
+          presentationId,
+          requestBody: {
+            requests: offScreenTextRequests,
+          },
+        }),
+        5,
+        1000,
+        `Add off-screen data for slide ${i + 1}`
+      );
     }
 
     // Delete the original template slide (the second slide) is not needed anymore
@@ -1062,5 +1111,50 @@ export class AppService {
       this.logger.error('Error finding best image:', error);
       return null;
     }
+  }
+
+  /**
+   * Utility function to add delay between API calls
+   */
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Retry function with exponential backoff for Google API calls
+   */
+  private async retryWithBackoff<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 5,
+    baseDelay: number = 1000,
+    operationName: string = 'API call'
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        const isRateLimitError = 
+          error?.message?.includes('write requests per minute per user exceeded') ||
+          error?.message?.includes('rate limit') ||
+          error?.message?.includes('quota exceeded') ||
+          error?.status === 429 ||
+          error?.code === 429;
+
+        if (isRateLimitError && attempt < maxRetries) {
+          const delayMs = baseDelay * Math.pow(2, attempt - 1) + Math.random() * 1000;
+          this.logger.warn(
+            `${operationName} rate limited (attempt ${attempt}/${maxRetries}). ` +
+            `Retrying in ${Math.round(delayMs)}ms...`
+          );
+          await this.delay(delayMs);
+          continue;
+        }
+
+        // If it's not a rate limit error or we've exhausted retries, throw the error
+        this.logger.error(`${operationName} failed after ${attempt} attempts:`, error?.message);
+        throw error;
+      }
+    }
+    throw new Error(`${operationName} failed after ${maxRetries} attempts`);
   }
 }
