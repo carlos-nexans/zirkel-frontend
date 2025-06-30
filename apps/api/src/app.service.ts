@@ -561,13 +561,13 @@ export class AppService {
 
     // Now, update each slide with the media data
     this.logger.log(`Processing ${mediaList.length} media items for slides...`);
-    
+
     for (let i = 0; i < mediaList.length; i++) {
       const media = mediaList[i];
       const currentSlideId = presentation.data.slides?.[i + 1]?.objectId;
-      
+
       this.logger.log(`Processing media ${i + 1}/${mediaList.length}: ${media.claveZirkel}`);
-      
+
       if (!currentSlideId) {
         this.logger.warn(
           `Could not find slide ID for media ${media.claveZirkel}`,
@@ -908,14 +908,14 @@ export class AppService {
           firstTarifaColumn = index;
         }
       });
-      
+
       const safeUpdateRange = firstTarifaColumn > 0 ? this.getColumnLetter(firstTarifaColumn) : 'Z';
       this.logger.log(`Safe update range: A:${safeUpdateRange} (stopping before TARIFA columns at column ${firstTarifaColumn + 1})`);
 
       // Check for duplicates in input data
       const claveZirkelCounts = new Map<string, number>();
       const duplicates = new Set<string>();
-      
+
       mediaDataList.forEach((media, index) => {
         const clave = media.claveZirkel;
         if (clave) {
@@ -937,11 +937,11 @@ export class AppService {
           this.logger.warn(`  - ${clave}: appears ${count} times`);
         });
         this.logger.warn(`This will result in ${mediaDataList.length - duplicates.size} actual spreadsheet rows instead of ${mediaDataList.length}`);
-        
+
         // Deduplicate the input data (keep last occurrence)
         const seenClaves = new Set<string>();
         const deduplicatedList: MediaData[] = [];
-        
+
         // Process in reverse to keep the last occurrence of each duplicate
         for (let i = mediaDataList.length - 1; i >= 0; i--) {
           const media = mediaDataList[i];
@@ -951,14 +951,14 @@ export class AppService {
             deduplicatedList.unshift(media);
           }
         }
-        
+
         this.logger.log(`🔧 Deduplicated: ${mediaDataList.length} → ${deduplicatedList.length} items (keeping last occurrence of duplicates)`);
         processedMediaList = deduplicatedList;
       }
 
       // Procesar cada medio
       this.logger.log(`Processing ${processedMediaList.length} media items for spreadsheet updates...`);
-      
+
       for (let i = 0; i < processedMediaList.length; i++) {
         const mediaData = processedMediaList[i];
         const isDuplicate = duplicates.has(mediaData.claveZirkel || '');
@@ -1002,14 +1002,19 @@ export class AppService {
         if (existingRowIndex > 0) {
           // Actualizar medio existente
           const existingRow = existingRows[existingRowIndex];
-          const updatedRow = [...existingRow];
+          // Only preserve data up to TARIFA columns to avoid accidentally overwriting them
+          const updatedRow = [...existingRow.slice(0, firstTarifaColumn)];
+          // Ensure the array is the right length by padding with empty strings if needed
+          while (updatedRow.length < firstTarifaColumn) {
+            updatedRow.push('');
+          }
 
           // Mark this row as used
           usedRowIndices.add(existingRowIndex);
 
           // Actualizar solo los campos que vienen en mediaData
           Object.entries(mediaData).forEach(([key, value]) => {
-            if (columnMap[key] !== undefined && value !== undefined) {
+            if (columnMap[key] !== undefined && value !== undefined && columnMap[key] < firstTarifaColumn) {
               // Skip coordinates fields
               if (key !== 'latitud' && key !== 'longitud') {
                 updatedRow[columnMap[key]] = value;
@@ -1018,12 +1023,17 @@ export class AppService {
           });
 
           // Actualizar las coordenadas
-          if (coordenadas) {
+          if (coordenadas && columnMap.coordenadas < firstTarifaColumn) {
             updatedRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Update our local existingRows to reflect the changes
-          existingRows[existingRowIndex] = [...updatedRow];
+          // Update our local existingRows to reflect the changes (only up to TARIFA)
+          // Preserve the TARIFA columns from the original row
+          const updatedRowWithTarifa = [...existingRow];
+          for (let i = 0; i < firstTarifaColumn; i++) {
+            updatedRowWithTarifa[i] = updatedRow[i];
+          }
+          existingRows[existingRowIndex] = updatedRowWithTarifa;
 
           // Update the row but only up to the column before TARIFA
           await this.retryWithBackoff(
@@ -1032,7 +1042,7 @@ export class AppService {
               range: `INVENTARIO!A${existingRowIndex + 1}:${safeUpdateRange}${existingRowIndex + 1}`,
               valueInputOption: 'USER_ENTERED',
               requestBody: {
-                values: [updatedRow.slice(0, firstTarifaColumn)],
+                values: [updatedRow],
               },
             }),
             5,
@@ -1061,19 +1071,20 @@ export class AppService {
             newRow[columnMap.coordenadas] = coordenadas;
           }
 
-          // Buscar la primera fila vacía según la clave ZIRKEL que no haya sido usada en este batch
+          // Buscar la primera fila vacía que no tenga ni claveZirkel ni proveedor y que no haya sido usada en este batch
           let emptyRowIndex = -1;
           for (let idx = 1; idx < existingRows.length; idx++) {
             const row = existingRows[idx];
             if (
               !usedRowIndices.has(idx) &&
-              (!row[columnMap.claveZirkel] || row[columnMap.claveZirkel] === '')
+              (!row[columnMap.claveZirkel] || row[columnMap.claveZirkel] === '') &&
+              (!row[columnMap.proveedor] || row[columnMap.proveedor] === '')
             ) {
               emptyRowIndex = idx;
               break;
             }
           }
-          
+
           // Si no encontramos una fila vacía, usar la siguiente posición después de todas las filas
           if (emptyRowIndex === -1) {
             emptyRowIndex = existingRows.length;
@@ -1269,7 +1280,7 @@ export class AppService {
       try {
         return await operation();
       } catch (error: any) {
-        const isRateLimitError = 
+        const isRateLimitError =
           error?.message?.includes('write requests per minute per user exceeded') ||
           error?.message?.includes('rate limit') ||
           error?.message?.includes('quota exceeded') ||
