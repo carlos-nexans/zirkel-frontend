@@ -45,6 +45,7 @@
     "pdf.js": "github:mozilla/pdf.js",
     "pdfjs-dist": "^5.1.91",
     "pdfjs-dist-for-node": "1.0.892-rc.1",
+    "pdf-extractor": "^1.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "sharp": "0.34.1",

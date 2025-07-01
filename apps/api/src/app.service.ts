@@ -1131,50 +1131,32 @@ export class AppService {
   }
   private async getAllImagesFromPDFPage(page: any): Promise<string[]> {
     const images: string[] = [];
+
     try {
-      const operatorList = await page.getOperatorList();
-      const pdfjsLib = await this.loadPDFJS();
+      // Using the pdf-extractor library which handles resolving internal
+      // XObject references automatically. This avoids the "object not resolved"
+      // issues seen with the previous implementation.
+      const { extractImagesFromPage } = await import('pdf-extractor');
 
-      await page.objs.resolve();
+      // extractImagesFromPage is expected to accept a pdf.js page instance and
+      // return an array of image buffers
+      const pageImages: Buffer[] = await extractImagesFromPage(page);
 
-      for (let i = 0; i < operatorList.fnArray.length; i++) {
-        const op = operatorList.fnArray[i];
-        const args = operatorList.argsArray[i];
+      for (const imgBuf of pageImages) {
+        const buffer = await sharp(imgBuf)
+          .resize(600, null, {
+            fit: 'contain',
+            withoutEnlargement: true,
+          })
+          .jpeg()
+          .toBuffer();
 
-        if (op === pdfjsLib.OPS.paintImageXObject && args && args[0]) {
-          try {
-            const imageXObject = await page.objs.get(args[0]);
-            if (!imageXObject) continue;
-
-            if (imageXObject && imageXObject.width && imageXObject.height) {
-              const { width, height, data } = imageXObject;
-
-              // Resize image to a reasonable size for Gemini
-              const sharpImage = sharp(data, {
-                raw: {
-                  width,
-                  height,
-                  channels: 3, // Assuming RGB, adjust if needed
-                },
-              }).resize(600, null, {
-                fit: 'contain',
-                withoutEnlargement: true,
-              });
-
-              const buffer = await sharpImage.jpeg().toBuffer();
-              images.push(
-                `data:image/jpeg;base64,${buffer.toString('base64')}`,
-              );
-            }
-          } catch (err) {
-            // this.logger.warn(`Skipping image ${args[0]}: ${err.message}`);
-            continue;
-          }
-        }
+        images.push(`data:image/jpeg;base64,${buffer.toString('base64')}`);
       }
     } catch (error) {
       this.logger.error('Error extracting images:', error);
     }
+
     return images;
   }
 
